@@ -6,6 +6,7 @@ const TITLES: Record<string, string> = {
   "/contatos": "Contatos",
   "/pipeline": "Pipeline",
   "/tarefas": "Tarefas",
+  "/recuperacoes": "Recuperações",
   "/configuracoes": "Configurações",
 };
 
@@ -27,9 +28,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
         <Menu className="h-5 w-5" />
       </button>
 
-      <h1 className="text-xl font-semibold tracking-tight text-foreground">
-        {title}
-      </h1>
+      <h1 className="text-xl font-semibold tracking-tight text-foreground">{title}</h1>
 
       <div className="ml-auto flex items-center gap-2">
         {/* Busca (visual apenas) */}
