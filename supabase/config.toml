@@ -1,0 +1,10 @@
+project_id = "vvmsikxxoamwqjuihtjk"
+
+[functions.crm-automation]
+verify_jwt = false
+
+[functions.crm-inbound]
+verify_jwt = false
+
+[functions.crm-import]
+verify_jwt = true
