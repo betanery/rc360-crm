@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppLayout } from "@/components/layout/AppLayout";
+import { CRMProvider } from "@/lib/crm-data";
 
 function NotFoundComponent() {
   return (
@@ -134,10 +135,12 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AppLayout>
-        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-        <Outlet />
-      </AppLayout>
+      <CRMProvider>
+        <AppLayout>
+          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+          <Outlet />
+        </AppLayout>
+      </CRMProvider>
     </QueryClientProvider>
   );
 }
