@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as PipelineRouteImport } from './routes/pipeline'
+import { Route as RecuperacoesRouteImport } from './routes/recuperacoes'
 import { Route as TarefasRouteImport } from './routes/tarefas'
 
 const IndexRoute = IndexRouteImport.update({
@@ -35,6 +36,11 @@ const PipelineRoute = PipelineRouteImport.update({
   path: '/pipeline',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RecuperacoesRoute = RecuperacoesRouteImport.update({
+  id: '/recuperacoes',
+  path: '/recuperacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TarefasRoute = TarefasRouteImport.update({
   id: '/tarefas',
   path: '/tarefas',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
+  '/recuperacoes': typeof RecuperacoesRoute
   '/tarefas': typeof TarefasRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
+  '/recuperacoes': typeof RecuperacoesRoute
   '/tarefas': typeof TarefasRoute
 }
 export interface FileRoutesById {
@@ -61,15 +69,34 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contatos': typeof ContatosRoute
   '/pipeline': typeof PipelineRoute
+  '/recuperacoes': typeof RecuperacoesRoute
   '/tarefas': typeof TarefasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/configuracoes' | '/contatos' | '/pipeline' | '/tarefas'
+  fullPaths:
+    | '/'
+    | '/configuracoes'
+    | '/contatos'
+    | '/pipeline'
+    | '/recuperacoes'
+    | '/tarefas'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/configuracoes' | '/contatos' | '/pipeline' | '/tarefas'
+  to:
+    | '/'
+    | '/configuracoes'
+    | '/contatos'
+    | '/pipeline'
+    | '/recuperacoes'
+    | '/tarefas'
   id:
-    '__root__' | '/' | '/configuracoes' | '/contatos' | '/pipeline' | '/tarefas'
+    | '__root__'
+    | '/'
+    | '/configuracoes'
+    | '/contatos'
+    | '/pipeline'
+    | '/recuperacoes'
+    | '/tarefas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +104,7 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContatosRoute: typeof ContatosRoute
   PipelineRoute: typeof PipelineRoute
+  RecuperacoesRoute: typeof RecuperacoesRoute
   TarefasRoute: typeof TarefasRoute
 }
 
@@ -110,6 +138,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/recuperacoes': {
+      id: '/recuperacoes'
+      path: '/recuperacoes'
+      fullPath: '/recuperacoes'
+      preLoaderRoute: typeof RecuperacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tarefas': {
       id: '/tarefas'
       path: '/tarefas'
@@ -125,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContatosRoute: ContatosRoute,
   PipelineRoute: PipelineRoute,
+  RecuperacoesRoute: RecuperacoesRoute,
   TarefasRoute: TarefasRoute,
 }
 export const routeTree = rootRouteImport
