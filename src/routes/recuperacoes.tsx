@@ -78,7 +78,7 @@ function RecuperacoesPage() {
                 <Button
                   size="sm"
                   variant="outline"
-                  onClick={() => updateCart(cart.id, "Recuperado")}
+                  onClick={() => void updateCart(cart.id, "Recuperado")}
                 >
                   Marcar recuperado
                 </Button>

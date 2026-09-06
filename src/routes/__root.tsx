@@ -13,6 +13,10 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppLayout } from "@/components/layout/AppLayout";
 import { CRMProvider } from "@/lib/crm-data";
+import { AuthProvider, useAuth } from "@/lib/auth";
+import { isSupabaseConfigured } from "@/lib/supabase";
+import { LoginPage } from "@/components/auth/LoginPage";
+import { Toaster } from "@/components/ui/sonner";
 
 function NotFoundComponent() {
   return (
@@ -135,12 +139,33 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <CRMProvider>
-        <AppLayout>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-        </AppLayout>
-      </CRMProvider>
+      <AuthProvider>
+        <AuthenticatedApp />
+      </AuthProvider>
     </QueryClientProvider>
+  );
+}
+
+function AuthenticatedApp() {
+  const { loading, session } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
+        Carregando…
+      </div>
+    );
+  }
+
+  if (isSupabaseConfigured && !session) return <LoginPage />;
+
+  return (
+    <CRMProvider>
+      <AppLayout>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+      </AppLayout>
+      <Toaster richColors position="top-right" />
+    </CRMProvider>
   );
 }

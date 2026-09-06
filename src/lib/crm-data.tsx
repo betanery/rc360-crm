@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { isSupabaseConfigured, supabase } from "./supabase";
 
 export type Product = "Rotas do Lucro" | "Fastrack" | "Consultoria 4X";
 export type Stage =
@@ -19,7 +20,6 @@ export interface Contact {
   createdAt: string;
   notes?: string;
 }
-
 export interface Opportunity {
   id: string;
   contactId: string;
@@ -29,7 +29,6 @@ export interface Opportunity {
   nextActionAt: string;
   lostReason?: string;
 }
-
 export interface Task {
   id: string;
   contactId: string;
@@ -38,7 +37,6 @@ export interface Task {
   type: "Call" | "Ligação" | "WhatsApp" | "E-mail" | "Follow-up";
   status: TaskStatus;
 }
-
 export interface CartRecovery {
   id: string;
   contactId: string;
@@ -57,7 +55,7 @@ const iso = (days: number, hour = 10) => {
   return value.toISOString();
 };
 
-const initialContacts: Contact[] = [
+const demoContacts: Contact[] = [
   {
     id: "c1",
     name: "Priscila Braga",
@@ -124,8 +122,7 @@ const initialContacts: Contact[] = [
     createdAt: iso(-6),
   },
 ];
-
-const initialOpportunities: Opportunity[] = [
+const demoOpportunities: Opportunity[] = [
   {
     id: "o1",
     contactId: "c1",
@@ -160,8 +157,7 @@ const initialOpportunities: Opportunity[] = [
     lostReason: "Sem retorno",
   },
 ];
-
-const initialTasks: Task[] = [
+const demoTasks: Task[] = [
   {
     id: "t1",
     contactId: "c1",
@@ -187,8 +183,7 @@ const initialTasks: Task[] = [
     status: "Pendente",
   },
 ];
-
-const initialCarts: CartRecovery[] = [
+const demoCarts: CartRecovery[] = [
   {
     id: "r1",
     contactId: "c3",
@@ -205,37 +200,143 @@ interface CRMContextValue {
   opportunities: Opportunity[];
   tasks: Task[];
   carts: CartRecovery[];
-  addContact: (contact: Omit<Contact, "id" | "createdAt" | "tags">) => void;
-  moveOpportunity: (id: string, stage: Stage) => void;
-  toggleTask: (id: string) => void;
-  updateCart: (id: string, status: CartRecovery["status"]) => void;
+  addContact: (contact: Omit<Contact, "id" | "createdAt" | "tags">) => Promise<void>;
+  moveOpportunity: (id: string, stage: Stage, lostReason?: string) => Promise<void>;
+  toggleTask: (id: string) => Promise<void>;
+  updateCart: (id: string, status: CartRecovery["status"]) => Promise<void>;
+  refresh: () => Promise<void>;
 }
 
 const CRMContext = createContext<CRMContextValue | null>(null);
-const STORAGE_KEY = "rc360-crm-v1";
+const STORAGE_KEY = "rc360-crm-v2-demo";
+type ContactRelation = { tags: { name: string } | { name: string }[] | null };
+type ContactRow = {
+  id: string;
+  name: string;
+  company: string | null;
+  phone: string;
+  email: string | null;
+  product: Product;
+  source: string | null;
+  campaign: string | null;
+  owner_name: string | null;
+  notes: string | null;
+  created_at: string;
+  contact_tags?: ContactRelation[] | null;
+};
+
+function mapContact(row: ContactRow): Contact {
+  const tags = (row.contact_tags ?? []).flatMap((relation) => {
+    if (!relation.tags) return [];
+    return Array.isArray(relation.tags)
+      ? relation.tags.map((tag) => tag.name)
+      : [relation.tags.name];
+  });
+  return {
+    id: row.id,
+    name: row.name,
+    company: row.company ?? "",
+    phone: row.phone,
+    email: row.email ?? "",
+    product: row.product,
+    source: row.source ?? "",
+    campaign: row.campaign ?? "",
+    owner: row.owner_name ?? "",
+    tags,
+    notes: row.notes ?? undefined,
+    createdAt: row.created_at,
+  };
+}
 
 export function CRMProvider({ children }: { children: ReactNode }) {
-  const [contacts, setContacts] = useState(initialContacts);
-  const [opportunities, setOpportunities] = useState(initialOpportunities);
-  const [tasks, setTasks] = useState(initialTasks);
-  const [carts, setCarts] = useState(initialCarts);
+  const [contacts, setContacts] = useState<Contact[]>(isSupabaseConfigured ? [] : demoContacts);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>(
+    isSupabaseConfigured ? [] : demoOpportunities,
+  );
+  const [tasks, setTasks] = useState<Task[]>(isSupabaseConfigured ? [] : demoTasks);
+  const [carts, setCarts] = useState<CartRecovery[]>(isSupabaseConfigured ? [] : demoCarts);
+  const [loading, setLoading] = useState(isSupabaseConfigured);
+  const [error, setError] = useState("");
+
+  async function refresh() {
+    if (!supabase) return;
+    setLoading(true);
+    setError("");
+    const [contactsResult, opportunitiesResult, tasksResult, cartsResult] = await Promise.all([
+      supabase
+        .from("contacts")
+        .select(
+          "id,name,company,phone,email,product,source,campaign,owner_name,notes,created_at,contact_tags(tags(name))",
+        )
+        .order("created_at", { ascending: false }),
+      supabase.from("opportunities").select("*").order("created_at", { ascending: false }),
+      supabase.from("tasks").select("*").order("due_at", { ascending: true }),
+      supabase.from("cart_recoveries").select("*").order("updated_at", { ascending: false }),
+    ]);
+    const firstError =
+      contactsResult.error ?? opportunitiesResult.error ?? tasksResult.error ?? cartsResult.error;
+    if (firstError) {
+      setError(firstError.message);
+      setLoading(false);
+      return;
+    }
+    setContacts(((contactsResult.data ?? []) as unknown as ContactRow[]).map(mapContact));
+    setOpportunities(
+      (opportunitiesResult.data ?? []).map((row) => ({
+        id: row.id,
+        contactId: row.contact_id,
+        stage: row.stage as Stage,
+        value: Number(row.value),
+        nextAction: row.next_action,
+        nextActionAt: row.next_action_at,
+        lostReason: row.lost_reason ?? undefined,
+      })),
+    );
+    setTasks(
+      (tasksResult.data ?? []).map((row) => ({
+        id: row.id,
+        contactId: row.contact_id,
+        title: row.title,
+        dueAt: row.due_at,
+        type: row.type as Task["type"],
+        status: row.status as TaskStatus,
+      })),
+    );
+    setCarts(
+      (cartsResult.data ?? []).map((row) => ({
+        id: row.id,
+        contactId: row.contact_id,
+        product: row.product as Product,
+        reason: row.reason,
+        value: Number(row.value),
+        status: row.status as CartRecovery["status"],
+        updatedAt: row.updated_at,
+      })),
+    );
+    setLoading(false);
+  }
 
   useEffect(() => {
+    if (supabase) {
+      void refresh();
+      return;
+    }
     const saved = localStorage.getItem(STORAGE_KEY);
     if (!saved) return;
     try {
       const data = JSON.parse(saved);
-      setContacts(data.contacts ?? initialContacts);
-      setOpportunities(data.opportunities ?? initialOpportunities);
-      setTasks(data.tasks ?? initialTasks);
-      setCarts(data.carts ?? initialCarts);
+      setContacts(data.contacts ?? demoContacts);
+      setOpportunities(data.opportunities ?? demoOpportunities);
+      setTasks(data.tasks ?? demoTasks);
+      setCarts(data.carts ?? demoCarts);
     } catch {
-      /* mantém os dados de demonstração */
+      // Mantém os dados de demonstração se o cache local estiver inválido.
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ contacts, opportunities, tasks, carts }));
+    if (!supabase)
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ contacts, opportunities, tasks, carts }));
   }, [contacts, opportunities, tasks, carts]);
 
   const value = useMemo<CRMContextValue>(
@@ -244,33 +345,120 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       opportunities,
       tasks,
       carts,
-      addContact: (contact) =>
-        setContacts((items) => [
-          ...items,
-          { ...contact, id: crypto.randomUUID(), tags: [], createdAt: new Date().toISOString() },
-        ]),
-      moveOpportunity: (id, stage) =>
+      refresh,
+      addContact: async (contact) => {
+        const normalizedPhone = contact.phone.replace(/\D/g, "");
+        const duplicate = contacts.some(
+          (item) =>
+            (normalizedPhone && item.phone.replace(/\D/g, "") === normalizedPhone) ||
+            (contact.email && item.email.toLowerCase() === contact.email.toLowerCase()),
+        );
+        if (duplicate) throw new Error("Já existe um contato com este WhatsApp ou e-mail.");
+        if (!supabase) {
+          setContacts((items) => [
+            ...items,
+            { ...contact, id: crypto.randomUUID(), tags: [], createdAt: new Date().toISOString() },
+          ]);
+          return;
+        }
+        const { data, error: insertError } = await supabase
+          .from("contacts")
+          .insert({
+            name: contact.name,
+            company: contact.company || null,
+            phone: contact.phone,
+            email: contact.email || null,
+            product: contact.product,
+            source: contact.source || null,
+            campaign: contact.campaign || null,
+            owner_name: contact.owner || null,
+            notes: contact.notes || null,
+          })
+          .select("id,name,company,phone,email,product,source,campaign,owner_name,notes,created_at")
+          .single();
+        if (insertError) throw insertError;
+        setContacts((items) => [mapContact(data as ContactRow), ...items]);
+      },
+      moveOpportunity: async (id, stage, lostReason) => {
+        const current = opportunities.find((item) => item.id === id);
+        if (!current) return;
+        if (stage === "Perdido" && !lostReason && !current.lostReason)
+          throw new Error("Informe o motivo da perda.");
+        if (stage === "Ganho" && current.value <= 0)
+          throw new Error("Informe o valor antes de marcar como ganho.");
+        if (supabase) {
+          const { error: updateError } = await supabase
+            .from("opportunities")
+            .update({
+              stage,
+              lost_reason: stage === "Perdido" ? (lostReason ?? current.lostReason) : null,
+            })
+            .eq("id", id);
+          if (updateError) throw updateError;
+        }
         setOpportunities((items) =>
-          items.map((item) => (item.id === id ? { ...item, stage } : item)),
-        ),
-      toggleTask: (id) =>
-        setTasks((items) =>
           items.map((item) =>
             item.id === id
-              ? { ...item, status: item.status === "Pendente" ? "Concluída" : "Pendente" }
+              ? {
+                  ...item,
+                  stage,
+                  lostReason: stage === "Perdido" ? (lostReason ?? item.lostReason) : undefined,
+                }
               : item,
           ),
-        ),
-      updateCart: (id, status) =>
+        );
+      },
+      toggleTask: async (id) => {
+        const current = tasks.find((item) => item.id === id);
+        if (!current) return;
+        const status: TaskStatus = current.status === "Pendente" ? "Concluída" : "Pendente";
+        if (supabase) {
+          const { error: updateError } = await supabase
+            .from("tasks")
+            .update({ status })
+            .eq("id", id);
+          if (updateError) throw updateError;
+        }
+        setTasks((items) => items.map((item) => (item.id === id ? { ...item, status } : item)));
+      },
+      updateCart: async (id, status) => {
+        const updatedAt = new Date().toISOString();
+        if (supabase) {
+          const { error: updateError } = await supabase
+            .from("cart_recoveries")
+            .update({ status, updated_at: updatedAt })
+            .eq("id", id);
+          if (updateError) throw updateError;
+        }
         setCarts((items) =>
-          items.map((item) =>
-            item.id === id ? { ...item, status, updatedAt: new Date().toISOString() } : item,
-          ),
-        ),
+          items.map((item) => (item.id === id ? { ...item, status, updatedAt } : item)),
+        );
+      },
     }),
     [contacts, opportunities, tasks, carts],
   );
 
+  if (loading)
+    return (
+      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
+        Carregando dados do CRM…
+      </div>
+    );
+  if (error)
+    return (
+      <div className="flex min-h-screen items-center justify-center p-6">
+        <div className="max-w-lg rounded-xl border bg-card p-6 text-center">
+          <h2 className="text-xl font-semibold">Não foi possível carregar o CRM</h2>
+          <p className="mt-2 text-sm text-muted-foreground">{error}</p>
+          <button
+            className="mt-4 rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground"
+            onClick={() => void refresh()}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
   return <CRMContext.Provider value={value}>{children}</CRMContext.Provider>;
 }
 

@@ -26,7 +26,7 @@ function TarefasPage() {
               <Button
                 size="icon"
                 variant="ghost"
-                onClick={() => toggleTask(task.id)}
+                onClick={() => void toggleTask(task.id)}
                 aria-label="Alterar status"
               >
                 {task.status === "Concluída" ? (

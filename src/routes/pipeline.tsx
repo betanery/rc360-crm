@@ -3,14 +3,26 @@ import { Calendar, ChevronLeft, ChevronRight, GripVertical } from "lucide-react"
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { money, shortDate, stages, useCRM, type Stage } from "@/lib/crm-data";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/pipeline")({ component: PipelinePage });
 
 function PipelinePage() {
   const { contacts, opportunities, moveOpportunity } = useCRM();
+  const moveTo = async (id: string, next: Stage) => {
+    const reason = next === "Perdido" ? window.prompt("Informe o motivo da perda:") : undefined;
+    if (next === "Perdido" && !reason?.trim()) return;
+    try {
+      await moveOpportunity(id, next, reason?.trim());
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Não foi possível mover a oportunidade.",
+      );
+    }
+  };
   const move = (id: string, index: number, delta: number) => {
     const next = stages[index + delta];
-    if (next) moveOpportunity(id, next);
+    if (next) void moveTo(id, next);
   };
   return (
     <div className="space-y-6">
@@ -29,7 +41,7 @@ function PipelinePage() {
               key={stage}
               className="min-w-[286px] flex-1 rounded-xl bg-muted/55 p-3"
               onDragOver={(e) => e.preventDefault()}
-              onDrop={(e) => moveOpportunity(e.dataTransfer.getData("text/plain"), stage)}
+              onDrop={(e) => void moveTo(e.dataTransfer.getData("text/plain"), stage)}
             >
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="font-sans text-sm font-semibold">{stage}</h3>

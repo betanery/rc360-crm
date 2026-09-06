@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { products, useCRM, type Product } from "@/lib/crm-data";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/contatos")({ component: ContatosPage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
@@ -28,21 +29,26 @@ function ContatosPage() {
       ),
     [contacts, query],
   );
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const d = new FormData(event.currentTarget);
-    addContact({
-      name: String(d.get("name")),
-      company: String(d.get("company")),
-      phone: String(d.get("phone")),
-      email: String(d.get("email")),
-      product: String(d.get("product")) as Product,
-      source: String(d.get("source")),
-      campaign: String(d.get("campaign")),
-      owner: String(d.get("owner")),
-      notes: String(d.get("notes")),
-    });
-    setOpen(false);
+    try {
+      await addContact({
+        name: String(d.get("name")),
+        company: String(d.get("company")),
+        phone: String(d.get("phone")),
+        email: String(d.get("email")),
+        product: String(d.get("product")) as Product,
+        source: String(d.get("source")),
+        campaign: String(d.get("campaign")),
+        owner: String(d.get("owner")),
+        notes: String(d.get("notes")),
+      });
+      setOpen(false);
+      toast.success("Contato salvo.");
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Não foi possível salvar o contato.");
+    }
   }
   return (
     <div className="space-y-6">

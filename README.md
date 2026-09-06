@@ -10,15 +10,27 @@ MVP responsivo para organizar a captação, o atendimento comercial e as recuper
 - tarefas e acompanhamentos;
 - recuperação de contatos e de carrinhos;
 - configuração visual das futuras integrações com BotConversa, e-mail e checkout;
-- dados demonstrativos persistidos localmente no navegador.
+- autenticação por e-mail e senha com Supabase;
+- banco PostgreSQL compartilhado com isolamento por organização (RLS);
+- modo demonstração local quando o Supabase ainda não estiver configurado.
 
 ## Identidade visual
 
 Interface executiva com azul-marinho, marfim, carvão, dourado e laranja para alertas, seguindo a identidade RC360.
 
+## Configuração do Supabase
+
+1. Crie um projeto no Supabase.
+2. Execute `supabase/migrations/001_initial_schema.sql` no SQL Editor.
+3. Em Authentication, desative cadastro público e crie o primeiro usuário da RC360. Ele será administrador.
+4. Copie `.env.example` para `.env.local` e informe a URL e a chave pública `anon` do projeto.
+5. No Lovable, cadastre as mesmas variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nos secrets do projeto.
+
+Nunca adicione a chave `service_role` ao frontend. O banco já aplica RLS para que cada usuário acesse somente a organização à qual pertence.
+
 ## Próxima fase
 
-Conectar autenticação e banco de dados compartilhado, seguida das integrações reais com BotConversa, provedor de e-mail e plataforma de pagamentos.
+Finalizar telas de cadastro de oportunidades e tarefas, seguida das integrações reais com BotConversa, provedor de e-mail e Kiwify.
 
 This project was built with [Lovable](https://lovable.dev).
 
