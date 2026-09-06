@@ -1,32 +1,24 @@
 # RC360 CRM
 
-Crie um sistema web responsivo chamado RC360 CRM usando React, TypeScript, Vite e Tailwind.
+MVP responsivo para organizar a captação, o atendimento comercial e as recuperações do ecossistema RC360.
 
-Crie somente a estrutura inicial:
+## Funcionalidades atuais
 
-- menu lateral;
+- dashboard comercial com indicadores;
+- cadastro e pesquisa de contatos;
+- pipeline em Kanban com movimentação de oportunidades;
+- tarefas e acompanhamentos;
+- recuperação de contatos e de carrinhos;
+- configuração visual das futuras integrações com BotConversa, e-mail e checkout;
+- dados demonstrativos persistidos localmente no navegador.
 
-- cabeçalho;
+## Identidade visual
 
-- página inicial vazia;
+Interface executiva com azul-marinho, marfim, carvão, dourado e laranja para alertas, seguindo a identidade RC360.
 
-- rotas preparadas para Dashboard, Contatos, Pipeline, Tarefas e Configurações.
+## Próxima fase
 
-Use a identidade visual RC360:
-
-- azul-marinho como cor principal;
-
-- fundo marfim;
-
-- textos em carvão;
-
-- dourado para destaques e botões;
-
-- laranja somente para alertas.
-
-O visual deve ser executivo, sofisticado, limpo e fácil de usar.
-
-Não implemente banco de dados, autenticação, integrações, automações ou funcionalidades nesta etapa. Não use dados reais. Gere apenas a base técnica e visual mínima do projeto para posterior sincronização com o GitHub.
+Conectar autenticação e banco de dados compartilhado, seguida das integrações reais com BotConversa, provedor de e-mail e plataforma de pagamentos.
 
 This project was built with [Lovable](https://lovable.dev).
 
