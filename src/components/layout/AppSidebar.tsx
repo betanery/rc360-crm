@@ -4,6 +4,7 @@ import {
   Users,
   KanbanSquare,
   CheckSquare,
+  RefreshCcw,
   Settings,
   X,
 } from "lucide-react";
@@ -14,6 +15,7 @@ const NAV_ITEMS = [
   { to: "/contatos", label: "Contatos", icon: Users },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   { to: "/tarefas", label: "Tarefas", icon: CheckSquare },
+  { to: "/recuperacoes", label: "Recuperações", icon: RefreshCcw },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 
@@ -45,7 +47,10 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
           <Link to="/" className="flex items-baseline gap-1" onClick={onClose}>
-            <span className="font-display text-2xl font-semibold tracking-tight text-sidebar-primary-foreground" style={{ color: "var(--sidebar-primary)" }}>
+            <span
+              className="font-display text-2xl font-semibold tracking-tight text-sidebar-primary-foreground"
+              style={{ color: "var(--sidebar-primary)" }}
+            >
               RC360
             </span>
             <span className="text-xs font-medium uppercase tracking-widest text-sidebar-foreground/70">
