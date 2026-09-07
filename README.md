@@ -20,11 +20,21 @@ Interface executiva com azul-marinho, marfim, carvão, dourado e laranja para al
 
 ## Configuração do Supabase
 
-1. Crie um projeto no Supabase.
-2. Execute `supabase/migrations/001_initial_schema.sql` no SQL Editor.
-3. Em Authentication, desative cadastro público e crie o primeiro usuário da RC360. Ele será administrador.
-4. Copie `.env.example` para `.env.local` e informe a URL e a chave pública `anon` do projeto.
-5. No Lovable, cadastre as mesmas variáveis `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nos secrets do projeto.
+O app usa o projeto existente **RC360 - CRM**, referência `vvmsikxxoamwqjuihtjk`.
+Não crie outro Supabase nem habilite Lovable Cloud Database para este CRM.
+
+O arquivo `.env` versionado contém somente a configuração pública do navegador:
+`VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` (chave publishable) e
+`VITE_SUPABASE_PROJECT_ID`. O Vite carrega esses valores no desenvolvimento e no
+build, sem depender da conexão administrativa do Lovable. Variáveis do ambiente
+de build e arquivos locais podem sobrescrever esses valores; mantenha-os alinhados
+ao mesmo projeto. `.env.example` é apenas uma referência e não precisa ser copiado
+para executar este CRM.
+
+Após sincronizar o GitHub, o Lovable precisa reconstruir o preview. Uma compilação
+bem-sucedida deve exibir a tela de login quando não houver sessão autenticada.
+Entre com um usuário existente; o cadastro público está desativado. Não reaplique
+migrations nem crie usuários para configurar o frontend.
 
 Nunca adicione a chave `service_role` ao frontend. O banco já aplica RLS para que cada usuário acesse somente a organização à qual pertence.
 
