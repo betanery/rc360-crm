@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import type { Database } from "./types";
+import type { Database } from "./database.types";
 
 /**
  * RC360 CRM — Cliente Supabase (scaffold placeholder).
@@ -9,8 +9,8 @@ import type { Database } from "./types";
  * são aceitos sem quebrar a aplicação; chamadas ainda não serão feitas.
  */
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL ?? "";
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
+const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] ?? "";
+const supabaseAnonKey = import.meta.env["VITE_SUPABASE_ANON_KEY"] ?? "";
 
 const isPlaceholder =
   !supabaseUrl ||
