@@ -18,7 +18,7 @@ export interface Contact {
   owner: string;
   tags: string[];
   createdAt: string;
-  notes?: string;
+  notes?: string | undefined;
 }
 export interface Opportunity {
   id: string;
@@ -27,7 +27,7 @@ export interface Opportunity {
   value: number;
   nextAction: string;
   nextActionAt: string;
-  lostReason?: string;
+  lostReason?: string | undefined;
 }
 export interface Task {
   id: string;
