@@ -61,9 +61,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # The initial schema already exists in this production database,
-          # but it was created before migration tracking was configured.
-          # Mark it as applied so db push does not try to recreate existing tables.
           supabase migration repair 001 --status applied || true
           supabase migration list
 
@@ -77,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for function_name in crm-automation crm-inbound crm-import; do
+          for function_name in crm-automation crm-inbound crm-import crm-whatsapp-test; do
             echo "Deploying ${function_name}..."
             supabase functions deploy "$function_name" --project-ref "$SUPABASE_PROJECT_REF" --use-api
           done
