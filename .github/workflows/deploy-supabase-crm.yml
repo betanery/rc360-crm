@@ -51,12 +51,27 @@ jobs:
           fi
           supabase functions list --project-ref "$SUPABASE_PROJECT_REF" >/dev/null
 
-      - name: Push database migrations
+      - name: Link Supabase project
         shell: bash
         run: |
           set -euo pipefail
           supabase link --project-ref "$SUPABASE_PROJECT_REF"
-          supabase db push
+
+      - name: Repair initial migration history
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The initial schema already exists in this production database,
+          # but it was created before migration tracking was configured.
+          # Mark it as applied so db push does not try to recreate existing tables.
+          supabase migration repair 001 --status applied || true
+          supabase migration list
+
+      - name: Push database migrations
+        shell: bash
+        run: |
+          set -euo pipefail
+          supabase db push --include-all
 
       - name: Deploy CRM Edge Functions
         shell: bash
