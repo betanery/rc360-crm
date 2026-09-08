@@ -3,14 +3,16 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BOTCONVERSA_KEY = Deno.env.get("BOTCONVERSA_API_KEY");
-const EMAIL_WEBHOOK_URL = Deno.env.get("CRM_EMAIL_WEBHOOK_URL");
+const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
+const RESEND_FROM = Deno.env.get("RESEND_FROM_EMAIL") || "RC360 CRM <onboarding@resend.dev>";
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
 const BOT_BASE = "https://backend.botconversa.com.br/api/v1/webhook";
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
-  status,
-  headers: { "Content-Type": "application/json" },
-});
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 
 async function sendWhatsApp(phone: string, message: string) {
   if (!BOTCONVERSA_KEY) throw new Error("BOTCONVERSA_API_KEY not configured");
@@ -32,14 +34,27 @@ async function sendWhatsApp(phone: string, message: string) {
   if (!sent.ok) throw new Error(`BotConversa send failed: ${sent.status}`);
 }
 
-async function sendEmail(email: string, subject: string, message: string, metadata: Record<string, unknown>) {
-  if (!EMAIL_WEBHOOK_URL) throw new Error("CRM_EMAIL_WEBHOOK_URL not configured");
-  const sent = await fetch(EMAIL_WEBHOOK_URL, {
+async function sendEmail(
+  email: string,
+  subject: string,
+  message: string,
+  _metadata: Record<string, unknown>,
+) {
+  if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+  const sent = await fetch("https://api.resend.com/emails", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ to: email, subject, message, metadata }),
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from: RESEND_FROM,
+      to: [email],
+      subject,
+      text: message,
+    }),
   });
-  if (!sent.ok) throw new Error(`Email webhook failed: ${sent.status}`);
+  if (!sent.ok) throw new Error(`Resend request failed: ${sent.status}`);
 }
 
 Deno.serve(async (req) => {
@@ -66,26 +81,43 @@ Deno.serve(async (req) => {
     const contact = item.contacts;
     const attempts = Number(item.attempts ?? 0) + 1;
     try {
-      await db.from("automation_queue").update({ status: "processing", attempts }).eq("id", item.id);
+      await db
+        .from("automation_queue")
+        .update({ status: "processing", attempts })
+        .eq("id", item.id);
 
       if (item.channel === "whatsapp") {
         if (!contact?.whatsapp_opt_in || !contact?.phone) {
           blocked++;
-          await db.from("automation_queue").update({ status: "blocked", last_error: "WhatsApp sem opt-in ou telefone" }).eq("id", item.id);
+          await db
+            .from("automation_queue")
+            .update({ status: "blocked", last_error: "WhatsApp sem opt-in ou telefone" })
+            .eq("id", item.id);
           continue;
         }
         await sendWhatsApp(contact.phone, item.message || "");
       } else {
         if (!contact?.email_opt_in || !contact?.email) {
           blocked++;
-          await db.from("automation_queue").update({ status: "blocked", last_error: "E-mail sem opt-in ou endereço" }).eq("id", item.id);
+          await db
+            .from("automation_queue")
+            .update({ status: "blocked", last_error: "E-mail sem opt-in ou endereço" })
+            .eq("id", item.id);
           continue;
         }
-        await sendEmail(contact.email, item.subject || "RC360", item.message || "", item.metadata || {});
+        await sendEmail(
+          contact.email,
+          item.subject || "RC360",
+          item.message || "",
+          item.metadata || {},
+        );
       }
 
       sent++;
-      await db.from("automation_queue").update({ status: "sent", sent_at: new Date().toISOString(), last_error: null }).eq("id", item.id);
+      await db
+        .from("automation_queue")
+        .update({ status: "sent", sent_at: new Date().toISOString(), last_error: null })
+        .eq("id", item.id);
       await db.from("activities").insert({
         organization_id: item.organization_id,
         contact_id: item.contact_id,
@@ -96,10 +128,13 @@ Deno.serve(async (req) => {
       });
     } catch (error) {
       failed++;
-      await db.from("automation_queue").update({
-        status: attempts >= 3 ? "failed" : "pending",
-        last_error: error instanceof Error ? error.message : String(error),
-      }).eq("id", item.id);
+      await db
+        .from("automation_queue")
+        .update({
+          status: attempts >= 3 ? "failed" : "pending",
+          last_error: error instanceof Error ? error.message : String(error),
+        })
+        .eq("id", item.id);
     }
   }
 

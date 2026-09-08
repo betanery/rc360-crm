@@ -2,8 +2,14 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { isSupabaseConfigured, supabase } from "./supabase";
 
 export type Product = "Rotas do Lucro" | "Fastrack" | "Consultoria 4X";
-export type Stage =
-  "Novo lead" | "Em qualificação" | "Call agendada" | "Proposta enviada" | "Ganho" | "Perdido";
+/**
+ * Nome livre da etapa do pipeline. Os 6 nomes em `stages` abaixo são o
+ * conjunto padrão (usado em modo demo e como seed no banco); depois que a
+ * migration 003_dynamic_stages.sql é aplicada, etapas extras cadastradas em
+ * `funnel_stages` também são válidas. "Ganho" e "Perdido" continuam
+ * carregando regra de negócio especial por convenção de nome.
+ */
+export type Stage = string;
 export type TaskStatus = "Pendente" | "Concluída";
 
 export interface Contact {
@@ -201,8 +207,12 @@ interface CRMContextValue {
   tasks: Task[];
   carts: CartRecovery[];
   addContact: (contact: Omit<Contact, "id" | "createdAt" | "tags">) => Promise<void>;
+  addOpportunity: (
+    opportunity: Omit<Opportunity, "id" | "stage" | "lostReason"> & { stage?: Stage },
+  ) => Promise<void>;
   moveOpportunity: (id: string, stage: Stage, lostReason?: string) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
+  addTask: (task: Omit<Task, "id" | "status">) => Promise<void>;
   updateCart: (id: string, status: CartRecovery["status"]) => Promise<void>;
   refresh: () => Promise<void>;
 }
@@ -379,6 +389,40 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         if (insertError) throw insertError;
         setContacts((items) => [mapContact(data as ContactRow), ...items]);
       },
+      addOpportunity: async (opportunity) => {
+        const stage = opportunity.stage ?? "Novo lead";
+        if (!supabase) {
+          setOpportunities((items) => [
+            ...items,
+            { ...opportunity, id: crypto.randomUUID(), stage },
+          ]);
+          return;
+        }
+        const { data, error: insertError } = await supabase
+          .from("opportunities")
+          .insert({
+            contact_id: opportunity.contactId,
+            stage,
+            value: opportunity.value,
+            next_action: opportunity.nextAction,
+            next_action_at: opportunity.nextActionAt,
+          })
+          .select("id,contact_id,stage,value,next_action,next_action_at,lost_reason")
+          .single();
+        if (insertError) throw insertError;
+        setOpportunities((items) => [
+          {
+            id: data.id,
+            contactId: data.contact_id,
+            stage: data.stage as Stage,
+            value: Number(data.value),
+            nextAction: data.next_action,
+            nextActionAt: data.next_action_at,
+            lostReason: data.lost_reason ?? undefined,
+          },
+          ...items,
+        ]);
+      },
       moveOpportunity: async (id, stage, lostReason) => {
         const current = opportunities.find((item) => item.id === id);
         if (!current) return;
@@ -420,6 +464,34 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           if (updateError) throw updateError;
         }
         setTasks((items) => items.map((item) => (item.id === id ? { ...item, status } : item)));
+      },
+      addTask: async (task) => {
+        if (!supabase) {
+          setTasks((items) => [...items, { ...task, id: crypto.randomUUID(), status: "Pendente" }]);
+          return;
+        }
+        const { data, error: insertError } = await supabase
+          .from("tasks")
+          .insert({
+            contact_id: task.contactId,
+            title: task.title,
+            due_at: task.dueAt,
+            type: task.type,
+          })
+          .select("id,contact_id,title,due_at,type,status")
+          .single();
+        if (insertError) throw insertError;
+        setTasks((items) => [
+          {
+            id: data.id,
+            contactId: data.contact_id,
+            title: data.title,
+            dueAt: data.due_at,
+            type: data.type as Task["type"],
+            status: data.status as TaskStatus,
+          },
+          ...items,
+        ]);
       },
       updateCart: async (id, status) => {
         const updatedAt = new Date().toISOString();

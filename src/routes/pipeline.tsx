@@ -1,14 +1,58 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { Calendar, ChevronLeft, ChevronRight, GripVertical } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Calendar, ChevronLeft, ChevronRight, GripVertical, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { money, shortDate, stages, useCRM, type Stage } from "@/lib/crm-data";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { money, shortDate, stages as defaultStages, useCRM, type Stage } from "@/lib/crm-data";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/pipeline")({ component: PipelinePage });
 
+interface FunnelStageRow {
+  id: string;
+  name: string;
+  position: number;
+}
+
+function isMissingTable(error: { code?: string; message?: string } | null) {
+  return error?.code === "42P01" || Boolean(error?.message?.includes("does not exist"));
+}
+
 function PipelinePage() {
   const { contacts, opportunities, moveOpportunity } = useCRM();
+  const [customStages, setCustomStages] = useState<FunnelStageRow[] | null>(null);
+  const [stagesAvailable, setStagesAvailable] = useState(true);
+  const [open, setOpen] = useState(false);
+
+  async function loadStages() {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("funnel_stages")
+      .select("id,name,position")
+      .order("position", { ascending: true });
+    if (error) {
+      if (isMissingTable(error)) setStagesAvailable(false);
+      return;
+    }
+    setCustomStages((data ?? []) as FunnelStageRow[]);
+  }
+
+  useEffect(() => {
+    void loadStages();
+  }, []);
+
+  const stages: Stage[] = customStages?.length ? customStages.map((s) => s.name) : defaultStages;
+
   const moveTo = async (id: string, next: Stage) => {
     const reason = next === "Perdido" ? window.prompt("Informe o motivo da perda:") : undefined;
     if (next === "Perdido" && !reason?.trim()) return;
@@ -24,14 +68,72 @@ function PipelinePage() {
     const next = stages[index + delta];
     if (next) void moveTo(id, next);
   };
+
+  async function addStage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+    if (!stagesAvailable) {
+      toast.error(
+        "Recurso pendente: aplique a migration 003_dynamic_stages.sql no Supabase para adicionar etapas.",
+      );
+      return;
+    }
+    const name = String(new FormData(event.currentTarget).get("name")).trim();
+    if (!name) return;
+    const wonIndex = stages.indexOf("Ganho");
+    const insertPosition = wonIndex >= 0 ? wonIndex : stages.length;
+    const { error } = await supabase
+      .from("funnel_stages")
+      .insert({ name, position: insertPosition - 0.5 });
+    if (error) {
+      toast.error(
+        error.message.includes("duplicate") ? "Já existe uma etapa com esse nome." : error.message,
+      );
+      return;
+    }
+    setOpen(false);
+    toast.success("Etapa adicionada.");
+    void loadStages();
+  }
+
   return (
     <div className="space-y-6">
-      <div>
-        <p className="text-sm font-medium text-accent">Venda consultiva</p>
-        <h2 className="text-3xl font-semibold">Pipeline</h2>
-        <p className="mt-1 text-muted-foreground">
-          Arraste os cartões ou use as setas para avançar.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-sm font-medium text-accent">Venda consultiva</p>
+          <h2 className="text-3xl font-semibold">Pipeline</h2>
+          <p className="mt-1 text-muted-foreground">
+            Arraste os cartões ou use as setas para avançar.
+          </p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button variant="outline">
+              <Plus /> Adicionar etapa
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Nova etapa do funil</DialogTitle>
+              <DialogDescription>
+                {!supabase
+                  ? "Modo demonstração: conecte o Supabase para adicionar etapas."
+                  : stagesAvailable
+                    ? 'A etapa é adicionada antes de "Ganho".'
+                    : "Recurso pendente: aplique a migration 003_dynamic_stages.sql no Supabase."}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={addStage} className="grid gap-3">
+              <Input
+                name="name"
+                placeholder="Nome da etapa *"
+                required
+                disabled={!supabase || !stagesAvailable}
+              />
+              <Button disabled={!supabase || !stagesAvailable}>Salvar etapa</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
       <div className="flex gap-4 overflow-x-auto pb-4">
         {stages.map((stage, stageIndex) => {

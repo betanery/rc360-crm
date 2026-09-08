@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { Plus, Search, Tag } from "lucide-react";
+import { createFileRoute, Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { ChevronRight, Plus, Search, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -12,23 +12,56 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { products, useCRM, type Product } from "@/lib/crm-data";
+import { products as staticProducts, useCRM, type Product } from "@/lib/crm-data";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/contatos")({ component: ContatosPage });
+export const Route = createFileRoute("/contatos/")({ component: ContatosPage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
+const ALL = "__all__";
 
 function ContatosPage() {
   const { contacts, addContact } = useCRM();
   const [query, setQuery] = useState("");
+  const [origin, setOrigin] = useState(ALL);
+  const [tag, setTag] = useState(ALL);
   const [open, setOpen] = useState(false);
+  const [activeProducts, setActiveProducts] = useState<string[]>(staticProducts);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from("products")
+      .select("name")
+      .eq("active", true)
+      .order("name", { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data?.length) setActiveProducts(data.map((p) => p.name));
+      });
+  }, []);
+
+  const origins = useMemo(
+    () => Array.from(new Set(contacts.map((c) => c.source).filter(Boolean))).sort(),
+    [contacts],
+  );
+  const tags = useMemo(
+    () => Array.from(new Set(contacts.flatMap((c) => c.tags))).sort(),
+    [contacts],
+  );
+
   const filtered = useMemo(
     () =>
-      contacts.filter((c) =>
-        `${c.name} ${c.company} ${c.email} ${c.phone}`.toLowerCase().includes(query.toLowerCase()),
-      ),
-    [contacts, query],
+      contacts.filter((c) => {
+        const matchesQuery = `${c.name} ${c.company} ${c.email} ${c.phone}`
+          .toLowerCase()
+          .includes(query.toLowerCase());
+        const matchesOrigin = origin === ALL || c.source === origin;
+        const matchesTag = tag === ALL || c.tags.includes(tag);
+        return matchesQuery && matchesOrigin && matchesTag;
+      }),
+    [contacts, query, origin, tag],
   );
+
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const d = new FormData(event.currentTarget);
@@ -79,7 +112,7 @@ function ContatosPage() {
               <Input name="phone" placeholder="WhatsApp *" required />
               <Input name="email" type="email" placeholder="E-mail" />
               <select name="product" className={fieldClass}>
-                {products.map((p) => (
+                {activeProducts.map((p) => (
                   <option key={p}>{p}</option>
                 ))}
               </select>
@@ -96,14 +129,42 @@ function ContatosPage() {
           </DialogContent>
         </Dialog>
       </div>
-      <div className="relative max-w-md">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          className="pl-9"
-          placeholder="Buscar por nome, empresa, e-mail ou telefone"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-        />
+      <div className="flex flex-wrap gap-3">
+        <div className="relative max-w-md flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Buscar por nome, empresa, e-mail ou telefone"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <select
+          className={`${fieldClass} w-auto min-w-40`}
+          value={origin}
+          onChange={(e) => setOrigin(e.target.value)}
+          aria-label="Filtro por origem"
+        >
+          <option value={ALL}>Todas as origens</option>
+          {origins.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </select>
+        <select
+          className={`${fieldClass} w-auto min-w-40`}
+          value={tag}
+          onChange={(e) => setTag(e.target.value)}
+          aria-label="Filtro por tag"
+        >
+          <option value={ALL}>Todas as tags</option>
+          {tags.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
       </div>
       <div className="overflow-hidden rounded-xl border bg-card">
         <div className="overflow-x-auto">
@@ -115,6 +176,7 @@ function ContatosPage() {
                 <th className="p-4">Origem</th>
                 <th className="p-4">Responsável</th>
                 <th className="p-4">Tags</th>
+                <th className="p-4" />
               </tr>
             </thead>
             <tbody>
@@ -135,9 +197,9 @@ function ContatosPage() {
                   <td className="p-4">
                     <div className="flex flex-wrap gap-1">
                       {c.tags.length ? (
-                        c.tags.map((tag) => (
-                          <Badge key={tag} variant="secondary">
-                            {tag}
+                        c.tags.map((t) => (
+                          <Badge key={t} variant="secondary">
+                            {t}
                           </Badge>
                         ))
                       ) : (
@@ -147,6 +209,15 @@ function ContatosPage() {
                         </span>
                       )}
                     </div>
+                  </td>
+                  <td className="p-4 text-right">
+                    <Link
+                      to="/contatos/$contactId"
+                      params={{ contactId: c.id }}
+                      className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
+                    >
+                      Detalhes <ChevronRight className="h-3.5 w-3.5" />
+                    </Link>
                   </td>
                 </tr>
               ))}

@@ -10,15 +10,26 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AutomacoesRouteImport } from './routes/automacoes'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
-import { Route as ContatosRouteImport } from './routes/contatos'
+import { Route as OportunidadesRouteImport } from './routes/oportunidades'
 import { Route as PipelineRouteImport } from './routes/pipeline'
+import { Route as ProdutosRouteImport } from './routes/produtos'
 import { Route as RecuperacoesRouteImport } from './routes/recuperacoes'
 import { Route as TarefasRouteImport } from './routes/tarefas'
+import { Route as ContatosIndexRouteImport } from './routes/contatos/index'
+import { Route as ContatosContactIdRouteImport } from './routes/contatos/$contactId'
+import { Route as EmpresasIndexRouteImport } from './routes/empresas/index'
+import { Route as EmpresasCompanyIdRouteImport } from './routes/empresas/$companyId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutomacoesRoute = AutomacoesRouteImport.update({
+  id: '/automacoes',
+  path: '/automacoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
@@ -26,14 +37,19 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ContatosRoute = ContatosRouteImport.update({
-  id: '/contatos',
-  path: '/contatos',
+const OportunidadesRoute = OportunidadesRouteImport.update({
+  id: '/oportunidades',
+  path: '/oportunidades',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineRoute = PipelineRouteImport.update({
   id: '/pipeline',
   path: '/pipeline',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ProdutosRoute = ProdutosRouteImport.update({
+  id: '/produtos',
+  path: '/produtos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RecuperacoesRoute = RecuperacoesRouteImport.update({
@@ -46,66 +62,128 @@ const TarefasRoute = TarefasRouteImport.update({
   path: '/tarefas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ContatosIndexRoute = ContatosIndexRouteImport.update({
+  id: '/contatos/',
+  path: '/contatos/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContatosContactIdRoute = ContatosContactIdRouteImport.update({
+  id: '/contatos/$contactId',
+  path: '/contatos/$contactId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasIndexRoute = EmpresasIndexRouteImport.update({
+  id: '/empresas/',
+  path: '/empresas/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasCompanyIdRoute = EmpresasCompanyIdRouteImport.update({
+  id: '/empresas/$companyId',
+  path: '/empresas/$companyId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/automacoes': typeof AutomacoesRoute
   '/configuracoes': typeof ConfiguracoesRoute
-  '/contatos': typeof ContatosRoute
+  '/oportunidades': typeof OportunidadesRoute
   '/pipeline': typeof PipelineRoute
+  '/produtos': typeof ProdutosRoute
   '/recuperacoes': typeof RecuperacoesRoute
   '/tarefas': typeof TarefasRoute
+  '/contatos/$contactId': typeof ContatosContactIdRoute
+  '/empresas/$companyId': typeof EmpresasCompanyIdRoute
+  '/contatos/': typeof ContatosIndexRoute
+  '/empresas/': typeof EmpresasIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/automacoes': typeof AutomacoesRoute
   '/configuracoes': typeof ConfiguracoesRoute
-  '/contatos': typeof ContatosRoute
+  '/oportunidades': typeof OportunidadesRoute
   '/pipeline': typeof PipelineRoute
+  '/produtos': typeof ProdutosRoute
   '/recuperacoes': typeof RecuperacoesRoute
   '/tarefas': typeof TarefasRoute
+  '/contatos/$contactId': typeof ContatosContactIdRoute
+  '/empresas/$companyId': typeof EmpresasCompanyIdRoute
+  '/contatos': typeof ContatosIndexRoute
+  '/empresas': typeof EmpresasIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/automacoes': typeof AutomacoesRoute
   '/configuracoes': typeof ConfiguracoesRoute
-  '/contatos': typeof ContatosRoute
+  '/oportunidades': typeof OportunidadesRoute
   '/pipeline': typeof PipelineRoute
+  '/produtos': typeof ProdutosRoute
   '/recuperacoes': typeof RecuperacoesRoute
   '/tarefas': typeof TarefasRoute
+  '/contatos/$contactId': typeof ContatosContactIdRoute
+  '/empresas/$companyId': typeof EmpresasCompanyIdRoute
+  '/contatos/': typeof ContatosIndexRoute
+  '/empresas/': typeof EmpresasIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/automacoes'
     | '/configuracoes'
-    | '/contatos'
+    | '/oportunidades'
     | '/pipeline'
+    | '/produtos'
     | '/recuperacoes'
     | '/tarefas'
+    | '/contatos/$contactId'
+    | '/empresas/$companyId'
+    | '/contatos/'
+    | '/empresas/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/automacoes'
     | '/configuracoes'
-    | '/contatos'
+    | '/oportunidades'
     | '/pipeline'
+    | '/produtos'
     | '/recuperacoes'
     | '/tarefas'
+    | '/contatos/$contactId'
+    | '/empresas/$companyId'
+    | '/contatos'
+    | '/empresas'
   id:
     | '__root__'
     | '/'
+    | '/automacoes'
     | '/configuracoes'
-    | '/contatos'
+    | '/oportunidades'
     | '/pipeline'
+    | '/produtos'
     | '/recuperacoes'
     | '/tarefas'
+    | '/contatos/$contactId'
+    | '/empresas/$companyId'
+    | '/contatos/'
+    | '/empresas/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AutomacoesRoute: typeof AutomacoesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
-  ContatosRoute: typeof ContatosRoute
+  OportunidadesRoute: typeof OportunidadesRoute
   PipelineRoute: typeof PipelineRoute
+  ProdutosRoute: typeof ProdutosRoute
   RecuperacoesRoute: typeof RecuperacoesRoute
   TarefasRoute: typeof TarefasRoute
+  ContatosContactIdRoute: typeof ContatosContactIdRoute
+  EmpresasCompanyIdRoute: typeof EmpresasCompanyIdRoute
+  ContatosIndexRoute: typeof ContatosIndexRoute
+  EmpresasIndexRoute: typeof EmpresasIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -117,6 +195,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/automacoes': {
+      id: '/automacoes'
+      path: '/automacoes'
+      fullPath: '/automacoes'
+      preLoaderRoute: typeof AutomacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/configuracoes': {
       id: '/configuracoes'
       path: '/configuracoes'
@@ -124,11 +209,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/contatos': {
-      id: '/contatos'
-      path: '/contatos'
-      fullPath: '/contatos'
-      preLoaderRoute: typeof ContatosRouteImport
+    '/oportunidades': {
+      id: '/oportunidades'
+      path: '/oportunidades'
+      fullPath: '/oportunidades'
+      preLoaderRoute: typeof OportunidadesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pipeline': {
@@ -136,6 +221,13 @@ declare module '@tanstack/react-router' {
       path: '/pipeline'
       fullPath: '/pipeline'
       preLoaderRoute: typeof PipelineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/produtos': {
+      id: '/produtos'
+      path: '/produtos'
+      fullPath: '/produtos'
+      preLoaderRoute: typeof ProdutosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/recuperacoes': {
@@ -152,16 +244,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TarefasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/contatos/': {
+      id: '/contatos/'
+      path: '/contatos'
+      fullPath: '/contatos/'
+      preLoaderRoute: typeof ContatosIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contatos/$contactId': {
+      id: '/contatos/$contactId'
+      path: '/contatos/$contactId'
+      fullPath: '/contatos/$contactId'
+      preLoaderRoute: typeof ContatosContactIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas/': {
+      id: '/empresas/'
+      path: '/empresas'
+      fullPath: '/empresas/'
+      preLoaderRoute: typeof EmpresasIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas/$companyId': {
+      id: '/empresas/$companyId'
+      path: '/empresas/$companyId'
+      fullPath: '/empresas/$companyId'
+      preLoaderRoute: typeof EmpresasCompanyIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AutomacoesRoute: AutomacoesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
-  ContatosRoute: ContatosRoute,
+  OportunidadesRoute: OportunidadesRoute,
   PipelineRoute: PipelineRoute,
+  ProdutosRoute: ProdutosRoute,
   RecuperacoesRoute: RecuperacoesRoute,
   TarefasRoute: TarefasRoute,
+  ContatosContactIdRoute: ContatosContactIdRoute,
+  EmpresasCompanyIdRoute: EmpresasCompanyIdRoute,
+  ContatosIndexRoute: ContatosIndexRoute,
+  EmpresasIndexRoute: EmpresasIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

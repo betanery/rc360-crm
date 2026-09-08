@@ -4,10 +4,11 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WEBHOOK_SECRET = Deno.env.get("CRM_WEBHOOK_SECRET");
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
-  status,
-  headers: { "Content-Type": "application/json" },
-});
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 
 const pick = (obj: Record<string, unknown>, keys: string[]) => {
   for (const key of keys) {
@@ -23,23 +24,30 @@ const normalizePhone = (value: unknown) => {
   return digits.startsWith("55") ? `+${digits}` : `+55${digits}`;
 };
 
-const allowedProducts = ["Rotas do Lucro", "Fastrack", "Consultoria 4X"];
-
 Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!WEBHOOK_SECRET || req.headers.get("x-crm-webhook-secret") !== WEBHOOK_SECRET) {
     return json({ error: "unauthorized" }, 401);
   }
 
-  const payload = await req.json().catch(() => null) as Record<string, unknown> | null;
+  const payload = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!payload) return json({ error: "invalid_json" }, 400);
 
   const db = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
-  const { data: org } = await db.from("organizations").select("id").order("created_at").limit(1).single();
+  const { data: org } = await db
+    .from("organizations")
+    .select("id")
+    .order("created_at")
+    .limit(1)
+    .single();
   if (!org?.id) return json({ error: "organization_not_found" }, 500);
 
-  const provider = String(pick(payload, ["provider", "source", "platform"]) || "webhook").toLowerCase();
-  const eventType = String(pick(payload, ["event_type", "event", "type", "status"]) || "lead").toLowerCase();
+  const provider = String(
+    pick(payload, ["provider", "source", "platform"]) || "webhook",
+  ).toLowerCase();
+  const eventType = String(
+    pick(payload, ["event_type", "event", "type", "status"]) || "lead",
+  ).toLowerCase();
   const externalIdRaw = pick(payload, ["event_id", "id", "transaction_id", "order_id"]);
   const externalId = externalIdRaw ? String(externalIdRaw) : null;
 
@@ -54,9 +62,14 @@ Deno.serve(async (req) => {
     if (duplicate) return json({ ok: true, duplicate: true, event_id: duplicate.id });
   }
 
-  const nested = (payload.customer || payload.contact || payload.buyer || {}) as Record<string, unknown>;
+  const nested = (payload.customer || payload.contact || payload.buyer || {}) as Record<
+    string,
+    unknown
+  >;
   const source = { ...payload, ...nested };
-  const name = String(pick(source, ["name", "full_name", "customer_name", "buyer_name"]) || "Contato sem nome");
+  const name = String(
+    pick(source, ["name", "full_name", "customer_name", "buyer_name"]) || "Contato sem nome",
+  );
   const phone = normalizePhone(pick(source, ["phone", "whatsapp", "mobile", "telephone"]));
   const emailRaw = pick(source, ["email", "customer_email", "buyer_email"]);
   const email = emailRaw ? String(emailRaw).trim().toLowerCase() : null;
@@ -69,50 +82,80 @@ Deno.serve(async (req) => {
   const checkoutUrl = checkoutRaw ? String(checkoutRaw) : null;
 
   if (!phone && !email) return json({ error: "phone_or_email_required" }, 400);
-  if (!product || !allowedProducts.includes(product)) {
-    return json({ error: "valid_product_required", allowed_products: allowedProducts }, 400);
+  const { data: allowedProducts } = await db
+    .from("products")
+    .select("name")
+    .eq("organization_id", org.id)
+    .eq("active", true);
+  const allowedProductNames = (allowedProducts ?? []).map((p) => p.name);
+  if (!product || !allowedProductNames.includes(product)) {
+    return json({ error: "valid_product_required", allowed_products: allowedProductNames }, 400);
   }
 
   let found = null;
   if (email) {
-    const result = await db.from("contacts").select("*").eq("organization_id", org.id).ilike("email", email).maybeSingle();
+    const result = await db
+      .from("contacts")
+      .select("*")
+      .eq("organization_id", org.id)
+      .ilike("email", email)
+      .maybeSingle();
     found = result.data;
   }
   if (!found && phone) {
-    const result = await db.from("contacts").select("*").eq("organization_id", org.id).eq("phone", phone).maybeSingle();
+    const result = await db
+      .from("contacts")
+      .select("*")
+      .eq("organization_id", org.id)
+      .eq("phone", phone)
+      .maybeSingle();
     found = result.data;
   }
 
   let contact = found;
   if (!contact) {
-    const { data, error } = await db.from("contacts").insert({
-      organization_id: org.id,
-      name,
-      phone: phone || "",
-      email,
-      product,
-      source: provider,
-      campaign,
-      external_id: externalId,
-    }).select("*").single();
+    const { data, error } = await db
+      .from("contacts")
+      .insert({
+        organization_id: org.id,
+        name,
+        phone: phone || "",
+        email,
+        product,
+        source: provider,
+        campaign,
+        external_id: externalId,
+      })
+      .select("*")
+      .single();
     if (error) return json({ error: error.message }, 500);
     contact = data;
   } else {
-    await db.from("contacts").update({
-      name: contact.name || name,
-      product,
-      campaign: campaign || contact.campaign,
-      external_id: externalId || contact.external_id,
-    }).eq("id", contact.id);
+    await db
+      .from("contacts")
+      .update({
+        name: contact.name || name,
+        product,
+        campaign: campaign || contact.campaign,
+        external_id: externalId || contact.external_id,
+      })
+      .eq("id", contact.id);
   }
 
   const isAbandoned = eventType.includes("abandon");
-  const isPaid = eventType.includes("purchase") || eventType.includes("approved") || eventType.includes("paid");
+  const isPaid =
+    eventType.includes("purchase") || eventType.includes("approved") || eventType.includes("paid");
   if (isPaid && value <= 0) return json({ error: "positive_value_required_for_won" }, 400);
 
   const stage = isPaid ? "Ganho" : isAbandoned ? "Em qualificação" : "Novo lead";
-  const nextAction = isPaid ? "Cliente convertido" : isAbandoned ? "Recuperar carrinho abandonado" : "Realizar primeiro contato";
-  const nextActionAt = new Date(Date.now() + (isAbandoned ? 30 * 60 * 1000 : isPaid ? 0 : 24 * 60 * 60 * 1000)).toISOString();
+  const nextAction = isPaid
+    ? "Cliente convertido"
+    : isAbandoned
+      ? "Recuperar carrinho abandonado"
+      : "Realizar primeiro contato";
+  const nextActionAt = new Date(
+    Date.now() + (isAbandoned ? 30 * 60 * 1000 : isPaid ? 0 : 24 * 60 * 60 * 1000),
+  ).toISOString();
 
   const { data: existingOpp } = await db
     .from("opportunities")
@@ -126,29 +169,38 @@ Deno.serve(async (req) => {
 
   let opportunity = existingOpp;
   if (opportunity) {
-    const { data, error } = await db.from("opportunities").update({
-      stage,
-      value: value || opportunity.value,
-      next_action: nextAction,
-      next_action_at: nextActionAt,
-      checkout_url: checkoutUrl || opportunity.checkout_url,
-      recovery_reason: isAbandoned ? "Carrinho abandonado" : opportunity.recovery_reason,
-      external_id: externalId || opportunity.external_id,
-    }).eq("id", opportunity.id).select("*").single();
+    const { data, error } = await db
+      .from("opportunities")
+      .update({
+        stage,
+        value: value || opportunity.value,
+        next_action: nextAction,
+        next_action_at: nextActionAt,
+        checkout_url: checkoutUrl || opportunity.checkout_url,
+        recovery_reason: isAbandoned ? "Carrinho abandonado" : opportunity.recovery_reason,
+        external_id: externalId || opportunity.external_id,
+      })
+      .eq("id", opportunity.id)
+      .select("*")
+      .single();
     if (error) return json({ error: error.message }, 500);
     opportunity = data;
   } else {
-    const { data, error } = await db.from("opportunities").insert({
-      organization_id: org.id,
-      contact_id: contact.id,
-      stage,
-      value,
-      next_action: nextAction,
-      next_action_at: nextActionAt,
-      checkout_url: checkoutUrl,
-      recovery_reason: isAbandoned ? "Carrinho abandonado" : null,
-      external_id: externalId,
-    }).select("*").single();
+    const { data, error } = await db
+      .from("opportunities")
+      .insert({
+        organization_id: org.id,
+        contact_id: contact.id,
+        stage,
+        value,
+        next_action: nextAction,
+        next_action_at: nextActionAt,
+        checkout_url: checkoutUrl,
+        recovery_reason: isAbandoned ? "Carrinho abandonado" : null,
+        external_id: externalId,
+      })
+      .select("*")
+      .single();
     if (error) return json({ error: error.message }, 500);
     opportunity = data;
   }
@@ -173,28 +225,39 @@ Deno.serve(async (req) => {
   }
 
   if (isPaid) {
-    await db.from("payments").upsert({
-      organization_id: org.id,
-      contact_id: contact.id,
-      external_id: externalId,
-      provider,
-      product,
-      value,
-      status: "Aprovado",
-      raw_event: payload,
-    }, { onConflict: "organization_id,provider,external_id" });
-    await db.from("cart_recoveries").update({ status: "Recuperado" })
-      .eq("organization_id", org.id).eq("contact_id", contact.id).eq("status", "Em recuperação");
+    await db.from("payments").upsert(
+      {
+        organization_id: org.id,
+        contact_id: contact.id,
+        external_id: externalId,
+        provider,
+        product,
+        value,
+        status: "Aprovado",
+        raw_event: payload,
+      },
+      { onConflict: "organization_id,provider,external_id" },
+    );
+    await db
+      .from("cart_recoveries")
+      .update({ status: "Recuperado" })
+      .eq("organization_id", org.id)
+      .eq("contact_id", contact.id)
+      .eq("status", "Em recuperação");
   }
 
-  const { data: event, error: eventError } = await db.from("automation_events").insert({
-    organization_id: org.id,
-    provider,
-    event_type: eventType,
-    external_id: externalId,
-    status: "processed",
-    payload,
-  }).select("id").single();
+  const { data: event, error: eventError } = await db
+    .from("automation_events")
+    .insert({
+      organization_id: org.id,
+      provider,
+      event_type: eventType,
+      external_id: externalId,
+      status: "processed",
+      payload,
+    })
+    .select("id")
+    .single();
   if (eventError) return json({ error: eventError.message }, 500);
 
   await db.from("activities").insert({
@@ -206,5 +269,11 @@ Deno.serve(async (req) => {
     details: { provider, product, value, opportunity_id: opportunity.id },
   });
 
-  return json({ ok: true, event_id: event.id, contact_id: contact.id, opportunity_id: opportunity.id, stage });
+  return json({
+    ok: true,
+    event_id: event.id,
+    contact_id: contact.id,
+    opportunity_id: opportunity.id,
+    stage,
+  });
 });

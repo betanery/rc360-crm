@@ -2,10 +2,14 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   LayoutDashboard,
   Users,
+  Building2,
   KanbanSquare,
+  Target,
   CheckSquare,
   RefreshCcw,
   Settings,
+  ShoppingBag,
+  Bot,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,9 +17,13 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard },
   { to: "/contatos", label: "Contatos", icon: Users },
+  { to: "/empresas", label: "Empresas", icon: Building2 },
+  { to: "/oportunidades", label: "Oportunidades", icon: Target },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
   { to: "/tarefas", label: "Tarefas", icon: CheckSquare },
   { to: "/recuperacoes", label: "Recuperações", icon: RefreshCcw },
+  { to: "/produtos", label: "Produtos", icon: ShoppingBag },
+  { to: "/automacoes", label: "Automações", icon: Bot },
   { to: "/configuracoes", label: "Configurações", icon: Settings },
 ] as const;
 

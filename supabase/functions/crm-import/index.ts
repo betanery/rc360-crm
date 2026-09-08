@@ -3,12 +3,12 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const allowedProducts = ["Rotas do Lucro", "Fastrack", "Consultoria 4X"];
 
-const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
-  status,
-  headers: { "Content-Type": "application/json" },
-});
+const json = (body: unknown, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
 
 const normalizePhone = (value: unknown) => {
   const digits = String(value || "").replace(/\D/g, "");
@@ -29,16 +29,24 @@ Deno.serve(async (req) => {
   if (userError || !userData.user) return json({ error: "unauthorized" }, 401);
 
   const db = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
-  const { data: profile } = await db.from("profiles")
+  const { data: profile } = await db
+    .from("profiles")
     .select("organization_id,role")
     .eq("id", userData.user.id)
     .single();
   if (!profile?.organization_id) return json({ error: "profile_not_found" }, 403);
 
-  const body = await req.json().catch(() => null) as { rows?: Record<string, unknown>[] } | null;
+  const body = (await req.json().catch(() => null)) as { rows?: Record<string, unknown>[] } | null;
   const rows = body?.rows;
   if (!Array.isArray(rows) || rows.length === 0) return json({ error: "rows_required" }, 400);
   if (rows.length > 1000) return json({ error: "max_1000_rows" }, 400);
+
+  const { data: productRows } = await db
+    .from("products")
+    .select("name")
+    .eq("organization_id", profile.organization_id)
+    .eq("active", true);
+  const allowedProducts = (productRows ?? []).map((p) => p.name);
 
   let created = 0;
   let updated = 0;
@@ -50,7 +58,10 @@ Deno.serve(async (req) => {
     try {
       const name = String(row.name || row.nome || "").trim();
       const phone = normalizePhone(row.phone || row.telefone || row.whatsapp);
-      const email = String(row.email || "").trim().toLowerCase() || null;
+      const email =
+        String(row.email || "")
+          .trim()
+          .toLowerCase() || null;
       const product = String(row.product || row.produto || "").trim();
       if (!name || !phone || !allowedProducts.includes(product)) {
         skipped++;
@@ -60,13 +71,21 @@ Deno.serve(async (req) => {
 
       let contact = null;
       if (email) {
-        const result = await db.from("contacts").select("*")
-          .eq("organization_id", profile.organization_id).ilike("email", email).maybeSingle();
+        const result = await db
+          .from("contacts")
+          .select("*")
+          .eq("organization_id", profile.organization_id)
+          .ilike("email", email)
+          .maybeSingle();
         contact = result.data;
       }
       if (!contact) {
-        const result = await db.from("contacts").select("*")
-          .eq("organization_id", profile.organization_id).eq("phone", phone).maybeSingle();
+        const result = await db
+          .from("contacts")
+          .select("*")
+          .eq("organization_id", profile.organization_id)
+          .eq("phone", phone)
+          .maybeSingle();
         contact = result.data;
       }
 
@@ -78,12 +97,13 @@ Deno.serve(async (req) => {
         email,
         product,
         source: String(row.source || row.origem || "Importação").trim(),
-        campaign: String(row.campaign || row.campanha || row.event || row.evento || "").trim() || null,
+        campaign:
+          String(row.campaign || row.campanha || row.event || row.evento || "").trim() || null,
         owner_name: String(row.owner_name || row.responsavel || "").trim() || null,
         notes: String(row.notes || row.observacoes || "").trim() || null,
         whatsapp_opt_in: Boolean(row.whatsapp_opt_in ?? false),
         email_opt_in: Boolean(row.email_opt_in ?? false),
-        opt_in_at: (row.whatsapp_opt_in || row.email_opt_in) ? new Date().toISOString() : null,
+        opt_in_at: row.whatsapp_opt_in || row.email_opt_in ? new Date().toISOString() : null,
         opt_in_source: String(row.opt_in_source || "importação").trim(),
       };
 
@@ -92,7 +112,9 @@ Deno.serve(async (req) => {
         if (error) throw error;
         updated++;
       } else {
-        const { error } = await db.from("contacts").insert({ ...data, created_by: userData.user.id });
+        const { error } = await db
+          .from("contacts")
+          .insert({ ...data, created_by: userData.user.id });
         if (error) throw error;
         created++;
       }
@@ -102,5 +124,12 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, total: rows.length, created, updated, skipped, errors: errors.slice(0, 50) });
+  return json({
+    ok: true,
+    total: rows.length,
+    created,
+    updated,
+    skipped,
+    errors: errors.slice(0, 50),
+  });
 });
