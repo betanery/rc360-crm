@@ -1,10 +1,12 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { renderEmailHtml, renderEmailText } from "../_shared/email-template.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BOTCONVERSA_KEY = Deno.env.get("BOTCONVERSA_API_KEY");
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM = Deno.env.get("RESEND_FROM_EMAIL") || "RC360 CRM <onboarding@resend.dev>";
+const RESEND_REPLY_TO = Deno.env.get("RESEND_REPLY_TO");
 const CRON_SECRET = Deno.env.get("CRON_SECRET");
 const BOT_BASE = "https://backend.botconversa.com.br/api/v1/webhook";
 
@@ -41,6 +43,7 @@ async function sendEmail(
   _metadata: Record<string, unknown>,
 ) {
   if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
+  const content = { heading: subject, bodyText: message };
   const sent = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -51,7 +54,9 @@ async function sendEmail(
       from: RESEND_FROM,
       to: [email],
       subject,
-      text: message,
+      html: renderEmailHtml(content),
+      text: renderEmailText(content),
+      ...(RESEND_REPLY_TO ? { reply_to: RESEND_REPLY_TO } : {}),
     }),
   });
   if (!sent.ok) throw new Error(`Resend request failed: ${sent.status}`);
