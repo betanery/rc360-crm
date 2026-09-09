@@ -15,16 +15,16 @@ import {
 import { cn } from "@/lib/utils";
 
 const NAV_ITEMS = [
-  { to: "/", label: "Dashboard", icon: LayoutDashboard },
-  { to: "/contatos", label: "Contatos", icon: Users },
-  { to: "/empresas", label: "Empresas", icon: Building2 },
-  { to: "/oportunidades", label: "Oportunidades", icon: Target },
+  { to: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+  { to: "/contacts", label: "Contatos", icon: Users },
+  { to: "/companies", label: "Empresas", icon: Building2 },
+  { to: "/opportunities", label: "Oportunidades", icon: Target },
   { to: "/pipeline", label: "Pipeline", icon: KanbanSquare },
-  { to: "/tarefas", label: "Tarefas", icon: CheckSquare },
-  { to: "/recuperacoes", label: "Recuperações", icon: RefreshCcw },
-  { to: "/produtos", label: "Produtos", icon: ShoppingBag },
-  { to: "/automacoes", label: "Automações", icon: Bot },
-  { to: "/configuracoes", label: "Configurações", icon: Settings },
+  { to: "/tasks", label: "Tarefas", icon: CheckSquare },
+  { to: "/recovery", label: "Recuperações", icon: RefreshCcw },
+  { to: "/products", label: "Produtos", icon: ShoppingBag },
+  { to: "/automations", label: "Automações", icon: Bot },
+  { to: "/settings", label: "Configurações", icon: Settings },
 ] as const;
 
 interface AppSidebarProps {

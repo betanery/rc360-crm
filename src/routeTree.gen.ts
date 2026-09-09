@@ -10,36 +10,37 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AutomacoesRouteImport } from './routes/automacoes'
-import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
-import { Route as OportunidadesRouteImport } from './routes/oportunidades'
+import { Route as AutomationsRouteImport } from './routes/automations'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as OpportunitiesRouteImport } from './routes/opportunities'
 import { Route as PipelineRouteImport } from './routes/pipeline'
-import { Route as ProdutosRouteImport } from './routes/produtos'
-import { Route as RecuperacoesRouteImport } from './routes/recuperacoes'
-import { Route as TarefasRouteImport } from './routes/tarefas'
-import { Route as ContatosIndexRouteImport } from './routes/contatos/index'
-import { Route as ContatosContactIdRouteImport } from './routes/contatos/$contactId'
-import { Route as EmpresasIndexRouteImport } from './routes/empresas/index'
-import { Route as EmpresasCompanyIdRouteImport } from './routes/empresas/$companyId'
+import { Route as ProductsRouteImport } from './routes/products'
+import { Route as RecoveryRouteImport } from './routes/recovery'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as CompaniesIndexRouteImport } from './routes/companies/index'
+import { Route as CompaniesCompanyIdRouteImport } from './routes/companies/$companyId'
+import { Route as ContactsIndexRouteImport } from './routes/contacts/index'
+import { Route as ContactsContactIdRouteImport } from './routes/contacts/$contactId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AutomacoesRoute = AutomacoesRouteImport.update({
-  id: '/automacoes',
-  path: '/automacoes',
+const AutomationsRoute = AutomationsRouteImport.update({
+  id: '/automations',
+  path: '/automations',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
-const OportunidadesRoute = OportunidadesRouteImport.update({
-  id: '/oportunidades',
-  path: '/oportunidades',
+const OpportunitiesRoute = OpportunitiesRouteImport.update({
+  id: '/opportunities',
+  path: '/opportunities',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PipelineRoute = PipelineRouteImport.update({
@@ -47,143 +48,155 @@ const PipelineRoute = PipelineRouteImport.update({
   path: '/pipeline',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProdutosRoute = ProdutosRouteImport.update({
-  id: '/produtos',
-  path: '/produtos',
+const ProductsRoute = ProductsRouteImport.update({
+  id: '/products',
+  path: '/products',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RecuperacoesRoute = RecuperacoesRouteImport.update({
-  id: '/recuperacoes',
-  path: '/recuperacoes',
+const RecoveryRoute = RecoveryRouteImport.update({
+  id: '/recovery',
+  path: '/recovery',
   getParentRoute: () => rootRouteImport,
 } as any)
-const TarefasRoute = TarefasRouteImport.update({
-  id: '/tarefas',
-  path: '/tarefas',
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ContatosIndexRoute = ContatosIndexRouteImport.update({
-  id: '/contatos/',
-  path: '/contatos/',
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ContatosContactIdRoute = ContatosContactIdRouteImport.update({
-  id: '/contatos/$contactId',
-  path: '/contatos/$contactId',
+const CompaniesIndexRoute = CompaniesIndexRouteImport.update({
+  id: '/companies/',
+  path: '/companies/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EmpresasIndexRoute = EmpresasIndexRouteImport.update({
-  id: '/empresas/',
-  path: '/empresas/',
+const CompaniesCompanyIdRoute = CompaniesCompanyIdRouteImport.update({
+  id: '/companies/$companyId',
+  path: '/companies/$companyId',
   getParentRoute: () => rootRouteImport,
 } as any)
-const EmpresasCompanyIdRoute = EmpresasCompanyIdRouteImport.update({
-  id: '/empresas/$companyId',
-  path: '/empresas/$companyId',
+const ContactsIndexRoute = ContactsIndexRouteImport.update({
+  id: '/contacts/',
+  path: '/contacts/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContactsContactIdRoute = ContactsContactIdRouteImport.update({
+  id: '/contacts/$contactId',
+  path: '/contacts/$contactId',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/automacoes': typeof AutomacoesRoute
-  '/configuracoes': typeof ConfiguracoesRoute
-  '/oportunidades': typeof OportunidadesRoute
+  '/automations': typeof AutomationsRoute
+  '/dashboard': typeof DashboardRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/pipeline': typeof PipelineRoute
-  '/produtos': typeof ProdutosRoute
-  '/recuperacoes': typeof RecuperacoesRoute
-  '/tarefas': typeof TarefasRoute
-  '/contatos/$contactId': typeof ContatosContactIdRoute
-  '/empresas/$companyId': typeof EmpresasCompanyIdRoute
-  '/contatos/': typeof ContatosIndexRoute
-  '/empresas/': typeof EmpresasIndexRoute
+  '/products': typeof ProductsRoute
+  '/recovery': typeof RecoveryRoute
+  '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
+  '/companies/$companyId': typeof CompaniesCompanyIdRoute
+  '/contacts/$contactId': typeof ContactsContactIdRoute
+  '/companies/': typeof CompaniesIndexRoute
+  '/contacts/': typeof ContactsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/automacoes': typeof AutomacoesRoute
-  '/configuracoes': typeof ConfiguracoesRoute
-  '/oportunidades': typeof OportunidadesRoute
+  '/automations': typeof AutomationsRoute
+  '/dashboard': typeof DashboardRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/pipeline': typeof PipelineRoute
-  '/produtos': typeof ProdutosRoute
-  '/recuperacoes': typeof RecuperacoesRoute
-  '/tarefas': typeof TarefasRoute
-  '/contatos/$contactId': typeof ContatosContactIdRoute
-  '/empresas/$companyId': typeof EmpresasCompanyIdRoute
-  '/contatos': typeof ContatosIndexRoute
-  '/empresas': typeof EmpresasIndexRoute
+  '/products': typeof ProductsRoute
+  '/recovery': typeof RecoveryRoute
+  '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
+  '/companies/$companyId': typeof CompaniesCompanyIdRoute
+  '/contacts/$contactId': typeof ContactsContactIdRoute
+  '/companies': typeof CompaniesIndexRoute
+  '/contacts': typeof ContactsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/automacoes': typeof AutomacoesRoute
-  '/configuracoes': typeof ConfiguracoesRoute
-  '/oportunidades': typeof OportunidadesRoute
+  '/automations': typeof AutomationsRoute
+  '/dashboard': typeof DashboardRoute
+  '/opportunities': typeof OpportunitiesRoute
   '/pipeline': typeof PipelineRoute
-  '/produtos': typeof ProdutosRoute
-  '/recuperacoes': typeof RecuperacoesRoute
-  '/tarefas': typeof TarefasRoute
-  '/contatos/$contactId': typeof ContatosContactIdRoute
-  '/empresas/$companyId': typeof EmpresasCompanyIdRoute
-  '/contatos/': typeof ContatosIndexRoute
-  '/empresas/': typeof EmpresasIndexRoute
+  '/products': typeof ProductsRoute
+  '/recovery': typeof RecoveryRoute
+  '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
+  '/companies/$companyId': typeof CompaniesCompanyIdRoute
+  '/contacts/$contactId': typeof ContactsContactIdRoute
+  '/companies/': typeof CompaniesIndexRoute
+  '/contacts/': typeof ContactsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/automacoes'
-    | '/configuracoes'
-    | '/oportunidades'
+    | '/automations'
+    | '/dashboard'
+    | '/opportunities'
     | '/pipeline'
-    | '/produtos'
-    | '/recuperacoes'
-    | '/tarefas'
-    | '/contatos/$contactId'
-    | '/empresas/$companyId'
-    | '/contatos/'
-    | '/empresas/'
+    | '/products'
+    | '/recovery'
+    | '/settings'
+    | '/tasks'
+    | '/companies/$companyId'
+    | '/contacts/$contactId'
+    | '/companies/'
+    | '/contacts/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/automacoes'
-    | '/configuracoes'
-    | '/oportunidades'
+    | '/automations'
+    | '/dashboard'
+    | '/opportunities'
     | '/pipeline'
-    | '/produtos'
-    | '/recuperacoes'
-    | '/tarefas'
-    | '/contatos/$contactId'
-    | '/empresas/$companyId'
-    | '/contatos'
-    | '/empresas'
+    | '/products'
+    | '/recovery'
+    | '/settings'
+    | '/tasks'
+    | '/companies/$companyId'
+    | '/contacts/$contactId'
+    | '/companies'
+    | '/contacts'
   id:
     | '__root__'
     | '/'
-    | '/automacoes'
-    | '/configuracoes'
-    | '/oportunidades'
+    | '/automations'
+    | '/dashboard'
+    | '/opportunities'
     | '/pipeline'
-    | '/produtos'
-    | '/recuperacoes'
-    | '/tarefas'
-    | '/contatos/$contactId'
-    | '/empresas/$companyId'
-    | '/contatos/'
-    | '/empresas/'
+    | '/products'
+    | '/recovery'
+    | '/settings'
+    | '/tasks'
+    | '/companies/$companyId'
+    | '/contacts/$contactId'
+    | '/companies/'
+    | '/contacts/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AutomacoesRoute: typeof AutomacoesRoute
-  ConfiguracoesRoute: typeof ConfiguracoesRoute
-  OportunidadesRoute: typeof OportunidadesRoute
+  AutomationsRoute: typeof AutomationsRoute
+  DashboardRoute: typeof DashboardRoute
+  OpportunitiesRoute: typeof OpportunitiesRoute
   PipelineRoute: typeof PipelineRoute
-  ProdutosRoute: typeof ProdutosRoute
-  RecuperacoesRoute: typeof RecuperacoesRoute
-  TarefasRoute: typeof TarefasRoute
-  ContatosContactIdRoute: typeof ContatosContactIdRoute
-  EmpresasCompanyIdRoute: typeof EmpresasCompanyIdRoute
-  ContatosIndexRoute: typeof ContatosIndexRoute
-  EmpresasIndexRoute: typeof EmpresasIndexRoute
+  ProductsRoute: typeof ProductsRoute
+  RecoveryRoute: typeof RecoveryRoute
+  SettingsRoute: typeof SettingsRoute
+  TasksRoute: typeof TasksRoute
+  CompaniesCompanyIdRoute: typeof CompaniesCompanyIdRoute
+  ContactsContactIdRoute: typeof ContactsContactIdRoute
+  CompaniesIndexRoute: typeof CompaniesIndexRoute
+  ContactsIndexRoute: typeof ContactsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -195,25 +208,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/automacoes': {
-      id: '/automacoes'
-      path: '/automacoes'
-      fullPath: '/automacoes'
-      preLoaderRoute: typeof AutomacoesRouteImport
+    '/automations': {
+      id: '/automations'
+      path: '/automations'
+      fullPath: '/automations'
+      preLoaderRoute: typeof AutomationsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/configuracoes': {
-      id: '/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/configuracoes'
-      preLoaderRoute: typeof ConfiguracoesRouteImport
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/oportunidades': {
-      id: '/oportunidades'
-      path: '/oportunidades'
-      fullPath: '/oportunidades'
-      preLoaderRoute: typeof OportunidadesRouteImport
+    '/opportunities': {
+      id: '/opportunities'
+      path: '/opportunities'
+      fullPath: '/opportunities'
+      preLoaderRoute: typeof OpportunitiesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pipeline': {
@@ -223,53 +236,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PipelineRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/produtos': {
-      id: '/produtos'
-      path: '/produtos'
-      fullPath: '/produtos'
-      preLoaderRoute: typeof ProdutosRouteImport
+    '/products': {
+      id: '/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof ProductsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/recuperacoes': {
-      id: '/recuperacoes'
-      path: '/recuperacoes'
-      fullPath: '/recuperacoes'
-      preLoaderRoute: typeof RecuperacoesRouteImport
+    '/recovery': {
+      id: '/recovery'
+      path: '/recovery'
+      fullPath: '/recovery'
+      preLoaderRoute: typeof RecoveryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tarefas': {
-      id: '/tarefas'
-      path: '/tarefas'
-      fullPath: '/tarefas'
-      preLoaderRoute: typeof TarefasRouteImport
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/contatos/': {
-      id: '/contatos/'
-      path: '/contatos'
-      fullPath: '/contatos/'
-      preLoaderRoute: typeof ContatosIndexRouteImport
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/contatos/$contactId': {
-      id: '/contatos/$contactId'
-      path: '/contatos/$contactId'
-      fullPath: '/contatos/$contactId'
-      preLoaderRoute: typeof ContatosContactIdRouteImport
+    '/companies/': {
+      id: '/companies/'
+      path: '/companies'
+      fullPath: '/companies/'
+      preLoaderRoute: typeof CompaniesIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/empresas/': {
-      id: '/empresas/'
-      path: '/empresas'
-      fullPath: '/empresas/'
-      preLoaderRoute: typeof EmpresasIndexRouteImport
+    '/companies/$companyId': {
+      id: '/companies/$companyId'
+      path: '/companies/$companyId'
+      fullPath: '/companies/$companyId'
+      preLoaderRoute: typeof CompaniesCompanyIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/empresas/$companyId': {
-      id: '/empresas/$companyId'
-      path: '/empresas/$companyId'
-      fullPath: '/empresas/$companyId'
-      preLoaderRoute: typeof EmpresasCompanyIdRouteImport
+    '/contacts/': {
+      id: '/contacts/'
+      path: '/contacts'
+      fullPath: '/contacts/'
+      preLoaderRoute: typeof ContactsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contacts/$contactId': {
+      id: '/contacts/$contactId'
+      path: '/contacts/$contactId'
+      fullPath: '/contacts/$contactId'
+      preLoaderRoute: typeof ContactsContactIdRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -277,17 +297,18 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AutomacoesRoute: AutomacoesRoute,
-  ConfiguracoesRoute: ConfiguracoesRoute,
-  OportunidadesRoute: OportunidadesRoute,
+  AutomationsRoute: AutomationsRoute,
+  DashboardRoute: DashboardRoute,
+  OpportunitiesRoute: OpportunitiesRoute,
   PipelineRoute: PipelineRoute,
-  ProdutosRoute: ProdutosRoute,
-  RecuperacoesRoute: RecuperacoesRoute,
-  TarefasRoute: TarefasRoute,
-  ContatosContactIdRoute: ContatosContactIdRoute,
-  EmpresasCompanyIdRoute: EmpresasCompanyIdRoute,
-  ContatosIndexRoute: ContatosIndexRoute,
-  EmpresasIndexRoute: EmpresasIndexRoute,
+  ProductsRoute: ProductsRoute,
+  RecoveryRoute: RecoveryRoute,
+  SettingsRoute: SettingsRoute,
+  TasksRoute: TasksRoute,
+  CompaniesCompanyIdRoute: CompaniesCompanyIdRoute,
+  ContactsContactIdRoute: ContactsContactIdRoute,
+  CompaniesIndexRoute: CompaniesIndexRoute,
+  ContactsIndexRoute: ContactsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

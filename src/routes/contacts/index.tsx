@@ -14,9 +14,10 @@ import {
 } from "@/components/ui/dialog";
 import { products as staticProducts, useCRM, type Product } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
+import { CompanyField } from "@/components/contacts/CompanyField";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/contatos/")({ component: ContatosPage });
+export const Route = createFileRoute("/contacts/")({ component: ContatosPage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 const ALL = "__all__";
 
@@ -108,7 +109,7 @@ function ContatosPage() {
             </DialogHeader>
             <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
               <Input name="name" placeholder="Nome *" required />
-              <Input name="company" placeholder="Empresa" />
+              <CompanyField />
               <Input name="phone" placeholder="WhatsApp *" required />
               <Input name="email" type="email" placeholder="E-mail" />
               <select name="product" className={fieldClass}>
@@ -212,7 +213,7 @@ function ContatosPage() {
                   </td>
                   <td className="p-4 text-right">
                     <Link
-                      to="/contatos/$contactId"
+                      to="/contacts/$contactId"
                       params={{ contactId: c.id }}
                       className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                     >

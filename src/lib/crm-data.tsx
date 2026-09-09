@@ -207,6 +207,7 @@ interface CRMContextValue {
   tasks: Task[];
   carts: CartRecovery[];
   addContact: (contact: Omit<Contact, "id" | "createdAt" | "tags">) => Promise<void>;
+  updateContact: (id: string, contact: Omit<Contact, "id" | "createdAt" | "tags">) => Promise<void>;
   addOpportunity: (
     opportunity: Omit<Opportunity, "id" | "stage" | "lostReason"> & { stage?: Stage },
   ) => Promise<void>;
@@ -256,6 +257,14 @@ function mapContact(row: ContactRow): Contact {
     notes: row.notes ?? undefined,
     createdAt: row.created_at,
   };
+}
+
+async function ensureCompany(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed || !supabase) return;
+  await supabase
+    .from("companies")
+    .upsert({ name: trimmed }, { onConflict: "organization_id,name", ignoreDuplicates: true });
 }
 
 export function CRMProvider({ children }: { children: ReactNode }) {
@@ -371,6 +380,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           ]);
           return;
         }
+        await ensureCompany(contact.company);
         const { data, error: insertError } = await supabase
           .from("contacts")
           .insert({
@@ -388,6 +398,41 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           .single();
         if (insertError) throw insertError;
         setContacts((items) => [mapContact(data as ContactRow), ...items]);
+      },
+      updateContact: async (id, contact) => {
+        const normalizedPhone = contact.phone.replace(/\D/g, "");
+        const duplicate = contacts.some(
+          (item) =>
+            item.id !== id &&
+            ((normalizedPhone && item.phone.replace(/\D/g, "") === normalizedPhone) ||
+              (contact.email && item.email.toLowerCase() === contact.email.toLowerCase())),
+        );
+        if (duplicate) throw new Error("Já existe outro contato com este WhatsApp ou e-mail.");
+        if (!supabase) {
+          setContacts((items) =>
+            items.map((item) => (item.id === id ? { ...item, ...contact } : item)),
+          );
+          return;
+        }
+        await ensureCompany(contact.company);
+        const { error: updateError } = await supabase
+          .from("contacts")
+          .update({
+            name: contact.name,
+            company: contact.company || null,
+            phone: contact.phone,
+            email: contact.email || null,
+            product: contact.product,
+            source: contact.source || null,
+            campaign: contact.campaign || null,
+            owner_name: contact.owner || null,
+            notes: contact.notes || null,
+          })
+          .eq("id", id);
+        if (updateError) throw updateError;
+        setContacts((items) =>
+          items.map((item) => (item.id === id ? { ...item, ...contact } : item)),
+        );
       },
       addOpportunity: async (opportunity) => {
         const stage = opportunity.stage ?? "Novo lead";

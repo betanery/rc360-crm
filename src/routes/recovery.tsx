@@ -8,7 +8,7 @@ import { money, shortDate, useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/recuperacoes")({ component: RecuperacoesPage });
+export const Route = createFileRoute("/recovery")({ component: RecuperacoesPage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 const DAY_MS = 24 * 60 * 60 * 1000;
 const daysSince = (iso: string) =>

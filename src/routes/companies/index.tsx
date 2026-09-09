@@ -15,7 +15,7 @@ import { useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/empresas/")({ component: EmpresasPage });
+export const Route = createFileRoute("/companies/")({ component: EmpresasPage });
 
 interface CompanyRow {
   id: string;
@@ -156,7 +156,7 @@ function EmpresasPage() {
           rows.map((company) => (
             <Link
               key={company.id}
-              to="/empresas/$companyId"
+              to="/companies/$companyId"
               params={{ companyId: company.id }}
               className="flex items-center justify-between gap-3 rounded-xl border bg-card p-4 hover:bg-muted/30"
             >

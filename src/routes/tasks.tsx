@@ -15,7 +15,7 @@ import {
 import { shortDate, useCRM, type Task } from "@/lib/crm-data";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/tarefas")({ component: TarefasPage });
+export const Route = createFileRoute("/tasks")({ component: TarefasPage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 const ALL = "__all__";
 const TASK_TYPES: Task["type"][] = ["Call", "Ligação", "WhatsApp", "E-mail", "Follow-up"];

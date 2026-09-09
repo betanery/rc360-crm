@@ -23,7 +23,7 @@ import { products } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/configuracoes")({ component: ConfiguracoesPage });
+export const Route = createFileRoute("/settings")({ component: ConfiguracoesPage });
 const fieldClass = "h-9 rounded-md border bg-background px-2 text-sm";
 const ROLES = ["commercial", "manager", "admin"] as const;
 const roleLabel: Record<(typeof ROLES)[number], string> = {

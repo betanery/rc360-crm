@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Calendar, ChevronLeft, ChevronRight, GripVertical, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -29,6 +29,7 @@ function isMissingTable(error: { code?: string; message?: string } | null) {
 }
 
 function PipelinePage() {
+  const navigate = useNavigate();
   const { contacts, opportunities, moveOpportunity } = useCRM();
   const [customStages, setCustomStages] = useState<FunnelStageRow[] | null>(null);
   const [stagesAvailable, setStagesAvailable] = useState(true);
@@ -157,7 +158,11 @@ function PipelinePage() {
                       key={item.id}
                       draggable
                       onDragStart={(e) => e.dataTransfer.setData("text/plain", item.id)}
-                      className="cursor-grab rounded-lg border bg-card p-4 shadow-sm active:cursor-grabbing"
+                      onClick={() =>
+                        contact &&
+                        navigate({ to: "/contacts/$contactId", params: { contactId: contact.id } })
+                      }
+                      className="cursor-pointer rounded-lg border bg-card p-4 shadow-sm hover:border-primary/40 active:cursor-grabbing"
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div>
@@ -184,7 +189,10 @@ function PipelinePage() {
                           size="icon"
                           variant="ghost"
                           disabled={!stageIndex}
-                          onClick={() => move(item.id, stageIndex, -1)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            move(item.id, stageIndex, -1);
+                          }}
                           aria-label="Voltar etapa"
                         >
                           <ChevronLeft />
@@ -193,7 +201,10 @@ function PipelinePage() {
                           size="icon"
                           variant="ghost"
                           disabled={stageIndex === stages.length - 1}
-                          onClick={() => move(item.id, stageIndex, 1)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            move(item.id, stageIndex, 1);
+                          }}
                           aria-label="Avançar etapa"
                         >
                           <ChevronRight />

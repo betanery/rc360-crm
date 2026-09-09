@@ -15,7 +15,7 @@ import {
 import { money, shortDate, useCRM } from "@/lib/crm-data";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/oportunidades")({ component: OportunidadesPage });
+export const Route = createFileRoute("/opportunities")({ component: OportunidadesPage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 const ALL = "__all__";
 type StatusFilter = "Aberta" | "Ganho" | "Perdido";
@@ -185,7 +185,7 @@ function OportunidadesPage() {
                     <td className="p-4 text-right">
                       {contact && (
                         <Link
-                          to="/contatos/$contactId"
+                          to="/contacts/$contactId"
                           params={{ contactId: contact.id }}
                           className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
                         >

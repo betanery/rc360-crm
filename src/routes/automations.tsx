@@ -15,7 +15,7 @@ import { shortDate, useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/automacoes")({ component: AutomacoesPage });
+export const Route = createFileRoute("/automations")({ component: AutomacoesPage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 
 interface AutomationRow {

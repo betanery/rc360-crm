@@ -16,7 +16,7 @@ import { products as staticProducts } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/produtos")({ component: ProdutosPage });
+export const Route = createFileRoute("/products")({ component: ProdutosPage });
 
 interface ProductRow {
   id: string;

@@ -9,7 +9,7 @@ import { useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/empresas/$companyId")({ component: EmpresaDetalhePage });
+export const Route = createFileRoute("/companies/$companyId")({ component: EmpresaDetalhePage });
 
 interface CompanyRow {
   id: string;
@@ -71,7 +71,7 @@ function EmpresaDetalhePage() {
   if (!company) {
     return (
       <div className="space-y-4">
-        <Link to="/empresas" className="inline-flex items-center gap-1 text-sm text-primary">
+        <Link to="/companies" className="inline-flex items-center gap-1 text-sm text-primary">
           <ArrowLeft className="h-4 w-4" /> Voltar para empresas
         </Link>
         <p className="text-muted-foreground">Carregando…</p>
@@ -81,7 +81,7 @@ function EmpresaDetalhePage() {
 
   return (
     <div className="space-y-6">
-      <Link to="/empresas" className="inline-flex items-center gap-1 text-sm text-primary">
+      <Link to="/companies" className="inline-flex items-center gap-1 text-sm text-primary">
         <ArrowLeft className="h-4 w-4" /> Voltar para empresas
       </Link>
       <div>
@@ -118,7 +118,7 @@ function EmpresaDetalhePage() {
             relatedContacts.map((c) => (
               <Link
                 key={c.id}
-                to="/contatos/$contactId"
+                to="/contacts/$contactId"
                 params={{ contactId: c.id }}
                 className="flex items-center justify-between gap-3 rounded-lg border bg-background p-3 hover:bg-muted/30"
               >
