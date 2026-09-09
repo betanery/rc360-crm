@@ -112,6 +112,15 @@ Deno.serve(async (req) => {
     found = result.data;
   }
 
+  const isNewLead = !found;
+  const isMessagingChannel = ["whatsapp", "instagram"].includes(provider);
+  const optIn =
+    isMessagingChannel && phone
+      ? { whatsapp_opt_in: true, opt_in_at: new Date().toISOString(), opt_in_source: provider }
+      : email
+        ? { email_opt_in: true, opt_in_at: new Date().toISOString(), opt_in_source: provider }
+        : {};
+
   let contact = found;
   if (!contact) {
     const { data, error } = await db
@@ -125,6 +134,7 @@ Deno.serve(async (req) => {
         source: provider,
         campaign,
         external_id: externalId,
+        ...optIn,
       })
       .select("*")
       .single();
@@ -244,6 +254,20 @@ Deno.serve(async (req) => {
       .eq("organization_id", org.id)
       .eq("contact_id", contact.id)
       .eq("status", "Em recuperação");
+  }
+
+  if (isNewLead && !isPaid && !isAbandoned) {
+    const firstName = name.split(" ")[0];
+    const channel = isMessagingChannel ? "whatsapp" : "email";
+    const welcomeMessage = `Olá ${firstName}! Obrigado pelo contato sobre ${product}. Em breve alguém da nossa equipe fala com você.`;
+    await db.rpc("enqueue_automation", {
+      p_contact_id: contact.id,
+      p_opportunity_id: opportunity.id,
+      p_channel: channel,
+      p_automation_type: "welcome",
+      p_message: welcomeMessage,
+      p_subject: channel === "email" ? "Recebemos seu contato — RC360" : null,
+    });
   }
 
   const { data: event, error: eventError } = await db

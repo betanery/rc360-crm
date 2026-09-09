@@ -208,6 +208,8 @@ interface CRMContextValue {
   carts: CartRecovery[];
   addContact: (contact: Omit<Contact, "id" | "createdAt" | "tags">) => Promise<void>;
   updateContact: (id: string, contact: Omit<Contact, "id" | "createdAt" | "tags">) => Promise<void>;
+  addContactTag: (contactId: string, tagName: string) => Promise<void>;
+  removeContactTag: (contactId: string, tagName: string) => Promise<void>;
   addOpportunity: (
     opportunity: Omit<Opportunity, "id" | "stage" | "lostReason"> & { stage?: Stage },
   ) => Promise<void>;
@@ -432,6 +434,72 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         if (updateError) throw updateError;
         setContacts((items) =>
           items.map((item) => (item.id === id ? { ...item, ...contact } : item)),
+        );
+      },
+      addContactTag: async (contactId, tagName) => {
+        const trimmed = tagName.trim();
+        if (!trimmed) return;
+        if (!supabase) {
+          setContacts((items) =>
+            items.map((item) =>
+              item.id === contactId && !item.tags.includes(trimmed)
+                ? { ...item, tags: [...item.tags, trimmed] }
+                : item,
+            ),
+          );
+          return;
+        }
+        const { data: tag, error: tagError } = await supabase
+          .from("tags")
+          .upsert({ name: trimmed }, { onConflict: "organization_id,name" })
+          .select("id")
+          .single();
+        if (tagError) throw tagError;
+        const { error: linkError } = await supabase
+          .from("contact_tags")
+          .upsert(
+            { contact_id: contactId, tag_id: tag.id },
+            { onConflict: "contact_id,tag_id", ignoreDuplicates: true },
+          );
+        if (linkError) throw linkError;
+        setContacts((items) =>
+          items.map((item) =>
+            item.id === contactId && !item.tags.includes(trimmed)
+              ? { ...item, tags: [...item.tags, trimmed] }
+              : item,
+          ),
+        );
+      },
+      removeContactTag: async (contactId, tagName) => {
+        if (!supabase) {
+          setContacts((items) =>
+            items.map((item) =>
+              item.id === contactId
+                ? { ...item, tags: item.tags.filter((t) => t !== tagName) }
+                : item,
+            ),
+          );
+          return;
+        }
+        const { data: tag } = await supabase
+          .from("tags")
+          .select("id")
+          .eq("name", tagName)
+          .maybeSingle();
+        if (tag) {
+          const { error: deleteError } = await supabase
+            .from("contact_tags")
+            .delete()
+            .eq("contact_id", contactId)
+            .eq("tag_id", tag.id);
+          if (deleteError) throw deleteError;
+        }
+        setContacts((items) =>
+          items.map((item) =>
+            item.id === contactId
+              ? { ...item, tags: item.tags.filter((t) => t !== tagName) }
+              : item,
+          ),
         );
       },
       addOpportunity: async (opportunity) => {

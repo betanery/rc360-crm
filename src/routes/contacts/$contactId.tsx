@@ -1,6 +1,17 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { ArrowLeft, Mail, Pencil, Phone, Tag } from "lucide-react";
+import {
+  ArrowLeft,
+  Instagram,
+  Linkedin,
+  Mail,
+  Pencil,
+  Phone,
+  Plus,
+  Save,
+  Search,
+  Tag,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,21 +22,35 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
-import { money, products as staticProducts, shortDate, useCRM, type Product } from "@/lib/crm-data";
+import {
+  money,
+  products as staticProducts,
+  shortDate,
+  useCRM,
+  type Product,
+  type Task,
+} from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { CompanyField } from "@/components/contacts/CompanyField";
+import { TagManager } from "@/components/contacts/TagManager";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/contacts/$contactId")({ component: ContatoDetalhePage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
+const TASK_TYPES: Task["type"][] = ["Call", "Ligação", "WhatsApp", "E-mail", "Follow-up"];
 
 function ContatoDetalhePage() {
   const { contactId } = Route.useParams();
-  const { contacts, opportunities, tasks, carts, updateContact } = useCRM();
+  const { contacts, opportunities, tasks, carts, updateContact, addTask } = useCRM();
   const contact = contacts.find((c) => c.id === contactId);
   const [open, setOpen] = useState(false);
   const [activeProducts, setActiveProducts] = useState<string[]>(staticProducts);
+  const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [taskOpen, setTaskOpen] = useState(false);
 
   useEffect(() => {
     if (!supabase) return;
@@ -36,6 +61,12 @@ function ContatoDetalhePage() {
       .order("name", { ascending: true })
       .then(({ data, error }) => {
         if (!error && data?.length) setActiveProducts(data.map((p) => p.name));
+      });
+    supabase
+      .from("companies")
+      .select("id,name")
+      .then(({ data, error }) => {
+        if (!error && data) setCompanies(data as { id: string; name: string }[]);
       });
   }, []);
 
@@ -53,6 +84,8 @@ function ContatoDetalhePage() {
   const contactOpportunities = opportunities.filter((o) => o.contactId === contactId);
   const contactTasks = tasks.filter((t) => t.contactId === contactId);
   const contactCarts = carts.filter((c) => c.contactId === contactId);
+  const linkedCompany = companies.find((c) => c.name === contact.company);
+  const searchTerm = encodeURIComponent([contact.name, contact.company].filter(Boolean).join(" "));
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -78,6 +111,47 @@ function ContatoDetalhePage() {
     }
   }
 
+  async function saveNotes() {
+    try {
+      await updateContact(contactId, {
+        name: contact!.name,
+        company: contact!.company,
+        phone: contact!.phone,
+        email: contact!.email,
+        product: contact!.product,
+        source: contact!.source,
+        campaign: contact!.campaign,
+        owner: contact!.owner,
+        notes: notesDraft,
+      });
+      setEditingNotes(false);
+      toast.success("Observações salvas.");
+    } catch (reason) {
+      toast.error(
+        reason instanceof Error ? reason.message : "Não foi possível salvar as observações.",
+      );
+    }
+  }
+
+  async function submitTask(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const d = new FormData(event.currentTarget);
+    const dueDate = String(d.get("dueDate"));
+    const dueTime = String(d.get("dueTime")) || "09:00";
+    try {
+      await addTask({
+        contactId,
+        title: String(d.get("title")),
+        type: String(d.get("type")) as Task["type"],
+        dueAt: new Date(`${dueDate}T${dueTime}`).toISOString(),
+      });
+      setTaskOpen(false);
+      toast.success("Tarefa criada.");
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Não foi possível criar a tarefa.");
+    }
+  }
+
   return (
     <div className="space-y-6">
       <Link to="/contacts" className="inline-flex items-center gap-1 text-sm text-primary">
@@ -85,7 +159,21 @@ function ContatoDetalhePage() {
       </Link>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-medium text-accent">{contact.company || "Sem empresa"}</p>
+          {contact.company ? (
+            linkedCompany ? (
+              <Link
+                to="/companies/$companyId"
+                params={{ companyId: linkedCompany.id }}
+                className="text-sm font-medium text-accent hover:underline"
+              >
+                {contact.company}
+              </Link>
+            ) : (
+              <p className="text-sm font-medium text-accent">{contact.company}</p>
+            )
+          ) : (
+            <p className="text-sm font-medium text-accent">Sem empresa</p>
+          )}
           <h2 className="text-3xl font-semibold">{contact.name}</h2>
           <div className="mt-2 flex flex-wrap gap-4 text-sm text-muted-foreground">
             <span className="flex items-center gap-1">
@@ -98,8 +186,35 @@ function ContatoDetalhePage() {
             )}
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Badge variant="secondary">{contact.product}</Badge>
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={`https://www.google.com/search?q=${searchTerm}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Search className="h-3.5 w-3.5" /> Google
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={`https://www.linkedin.com/search/results/all/?keywords=${searchTerm}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Linkedin className="h-3.5 w-3.5" /> LinkedIn
+            </a>
+          </Button>
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={`https://www.instagram.com/explore/search/keyword/?q=${searchTerm}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Instagram className="h-3.5 w-3.5" /> Instagram
+            </a>
+          </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
               <Pencil className="h-3.5 w-3.5" /> Editar
@@ -176,24 +291,48 @@ function ContatoDetalhePage() {
               <Tag className="h-4 w-4" /> Tags
             </CardTitle>
           </CardHeader>
-          <CardContent className="flex flex-wrap gap-1">
-            {contact.tags.length ? (
-              contact.tags.map((t) => (
-                <Badge key={t} variant="secondary">
-                  {t}
-                </Badge>
-              ))
-            ) : (
-              <span className="text-sm text-muted-foreground">Sem tags</span>
-            )}
+          <CardContent>
+            <TagManager contactId={contactId} tags={contact.tags} />
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle>Observações</CardTitle>
+            {supabase && !editingNotes && (
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => {
+                  setNotesDraft(contact.notes ?? "");
+                  setEditingNotes(true);
+                }}
+                aria-label="Editar observações"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">{contact.notes || "Sem observações."}</p>
+            {editingNotes ? (
+              <div className="space-y-2">
+                <textarea
+                  className="min-h-24 w-full rounded-md border bg-background p-3 text-sm"
+                  value={notesDraft}
+                  onChange={(e) => setNotesDraft(e.target.value)}
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <Button size="sm" onClick={() => void saveNotes()}>
+                    <Save className="h-3.5 w-3.5" /> Salvar
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setEditingNotes(false)}>
+                    Cancelar
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">{contact.notes || "Sem observações."}</p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -226,8 +365,34 @@ function ContatoDetalhePage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Tarefas ({contactTasks.length})</CardTitle>
+          <Dialog open={taskOpen} onOpenChange={setTaskOpen}>
+            <DialogTrigger asChild>
+              <Button size="sm">
+                <Plus className="h-3.5 w-3.5" /> Nova tarefa
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Nova tarefa</DialogTitle>
+                <DialogDescription>Associada a {contact.name}.</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={submitTask} className="grid gap-3">
+                <Input name="title" placeholder="Título da tarefa *" required />
+                <div className="grid grid-cols-2 gap-3">
+                  <select name="type" className={fieldClass}>
+                    {TASK_TYPES.map((t) => (
+                      <option key={t}>{t}</option>
+                    ))}
+                  </select>
+                  <Input name="dueDate" type="date" required />
+                </div>
+                <Input name="dueTime" type="time" defaultValue="09:00" />
+                <Button>Salvar tarefa</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
         </CardHeader>
         <CardContent className="space-y-3">
           {contactTasks.length ? (

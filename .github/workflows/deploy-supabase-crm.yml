@@ -77,7 +77,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for function_name in crm-automation crm-inbound crm-import crm-whatsapp-test crm-email-test; do
+          for function_name in crm-automation crm-inbound crm-import crm-whatsapp-test crm-email-test crm-invite-user; do
             echo "Deploying ${function_name}..."
             supabase functions deploy "$function_name" --project-ref "$SUPABASE_PROJECT_REF" --use-api
           done

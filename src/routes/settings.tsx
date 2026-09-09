@@ -13,12 +13,21 @@ import {
   ShoppingCart,
   Tags,
   Trash2,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { products } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -69,6 +78,8 @@ function ConfiguracoesPage() {
   const [profiles, setProfiles] = useState<ProfileRow[]>([]);
   const [pendingRoles, setPendingRoles] = useState<Record<string, ProfileRow["role"]>>({});
   const [savingUsers, setSavingUsers] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviting, setInviting] = useState(false);
 
   const [tags, setTags] = useState<TagRow[]>([]);
   const [newTag, setNewTag] = useState("");
@@ -206,6 +217,31 @@ function ConfiguracoesPage() {
       toast.error(error instanceof Error ? error.message : "Não foi possível salvar.");
     } finally {
       setSavingUsers(false);
+    }
+  }
+
+  async function inviteUser(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+    const d = new FormData(event.currentTarget);
+    const email = String(d.get("email")).trim();
+    const fullName = String(d.get("full_name")).trim();
+    setInviting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("crm-invite-user", {
+        body: { email, full_name: fullName },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Não foi possível enviar o convite.");
+      toast.success(`Convite enviado para ${email}.`);
+      setInviteOpen(false);
+      void loadProfiles();
+    } catch (reason) {
+      toast.error(
+        reason instanceof Error ? reason.message : "Não foi possível convidar o usuário.",
+      );
+    } finally {
+      setInviting(false);
     }
   }
 
@@ -430,11 +466,37 @@ function ConfiguracoesPage() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <Users className="h-5 w-5" />
             Usuários
           </CardTitle>
+          {supabase && (
+            <Dialog open={inviteOpen} onOpenChange={setInviteOpen}>
+              <DialogTrigger asChild>
+                <Button size="sm" variant="outline">
+                  <UserPlus className="h-3.5 w-3.5" /> Convidar usuário
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Convidar usuário</DialogTitle>
+                  <DialogDescription>
+                    Enviamos um e-mail de convite para o novo usuário definir a senha e entrar no
+                    RC360 CRM.
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={inviteUser} className="grid gap-3">
+                  <Input name="full_name" placeholder="Nome completo" />
+                  <Input name="email" type="email" placeholder="E-mail *" required />
+                  <Button disabled={inviting}>
+                    {inviting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+                    Enviar convite
+                  </Button>
+                </form>
+              </DialogContent>
+            </Dialog>
+          )}
         </CardHeader>
         <CardContent className="space-y-2">
           {!supabase && (
