@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronRight, Plus } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { money, shortDate, useCRM } from "@/lib/crm-data";
+import { money, products as staticProducts, shortDate, useCRM } from "@/lib/crm-data";
+import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/opportunities")({ component: OportunidadesPage });
@@ -25,25 +26,37 @@ function OportunidadesPage() {
   const [product, setProduct] = useState(ALL);
   const [status, setStatus] = useState<typeof ALL | StatusFilter>(ALL);
   const [open, setOpen] = useState(false);
+  const [activeProducts, setActiveProducts] = useState<string[]>(staticProducts);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from("products")
+      .select("name")
+      .eq("active", true)
+      .order("name", { ascending: true })
+      .then(({ data, error }) => {
+        if (!error && data?.length) setActiveProducts(data.map((p) => p.name));
+      });
+  }, []);
 
   const contactById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
 
   const filtered = useMemo(
     () =>
       opportunities.filter((o) => {
-        const contact = contactById.get(o.contactId);
-        const matchesProduct = product === ALL || contact?.product === product;
+        const matchesProduct = product === ALL || o.product === product;
         const opStatus: StatusFilter =
           o.stage === "Ganho" ? "Ganho" : o.stage === "Perdido" ? "Perdido" : "Aberta";
         const matchesStatus = status === ALL || opStatus === status;
         return matchesProduct && matchesStatus;
       }),
-    [opportunities, contactById, product, status],
+    [opportunities, product, status],
   );
 
   const productOptions = useMemo(
-    () => Array.from(new Set(contacts.map((c) => c.product))).sort(),
-    [contacts],
+    () => Array.from(new Set(opportunities.map((o) => o.product))).sort(),
+    [opportunities],
   );
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -53,6 +66,7 @@ function OportunidadesPage() {
     try {
       await addOpportunity({
         contactId: String(d.get("contactId")),
+        product: String(d.get("product")),
         value: Number(d.get("value")),
         nextAction: String(d.get("nextAction")),
         nextActionAt: new Date(`${dueDate}T10:00`).toISOString(),
@@ -95,6 +109,16 @@ function OportunidadesPage() {
                 {contacts.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
+                  </option>
+                ))}
+              </select>
+              <select name="product" className={fieldClass} required defaultValue="">
+                <option value="" disabled>
+                  Selecione o produto
+                </option>
+                {activeProducts.map((p) => (
+                  <option key={p} value={p}>
+                    {p}
                   </option>
                 ))}
               </select>
@@ -163,7 +187,7 @@ function OportunidadesPage() {
                       <p className="font-medium">{contact?.name}</p>
                       <p className="text-xs text-muted-foreground">{contact?.company}</p>
                     </td>
-                    <td className="p-4">{contact?.product}</td>
+                    <td className="p-4">{o.product}</td>
                     <td className="p-4">
                       <Badge
                         variant={

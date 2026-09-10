@@ -172,7 +172,7 @@ function PipelinePage() {
                         <GripVertical className="h-4 w-4 text-muted-foreground" />
                       </div>
                       <Badge className="mt-3" variant="secondary">
-                        {contact?.product}
+                        {item.product}
                       </Badge>
                       <p className="mt-3 text-lg font-semibold text-primary">
                         {money.format(item.value)}

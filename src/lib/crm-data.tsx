@@ -29,6 +29,7 @@ export interface Contact {
 export interface Opportunity {
   id: string;
   contactId: string;
+  product: string;
   stage: Stage;
   value: number;
   nextAction: string;
@@ -132,6 +133,7 @@ const demoOpportunities: Opportunity[] = [
   {
     id: "o1",
     contactId: "c1",
+    product: "Consultoria 4X",
     stage: "Call agendada",
     value: 20000,
     nextAction: "Realizar call de diagnóstico",
@@ -140,6 +142,7 @@ const demoOpportunities: Opportunity[] = [
   {
     id: "o2",
     contactId: "c2",
+    product: "Fastrack",
     stage: "Em qualificação",
     value: 997,
     nextAction: "Confirmar faturamento e urgência",
@@ -148,6 +151,7 @@ const demoOpportunities: Opportunity[] = [
   {
     id: "o3",
     contactId: "c4",
+    product: "Consultoria 4X",
     stage: "Proposta enviada",
     value: 30000,
     nextAction: "Follow-up da proposta",
@@ -156,6 +160,7 @@ const demoOpportunities: Opportunity[] = [
   {
     id: "o4",
     contactId: "c5",
+    product: "Fastrack",
     stage: "Perdido",
     value: 997,
     nextAction: "Retomar em 30 dias",
@@ -306,6 +311,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       (opportunitiesResult.data ?? []).map((row) => ({
         id: row.id,
         contactId: row.contact_id,
+        product: row.product,
         stage: row.stage as Stage,
         value: Number(row.value),
         nextAction: row.next_action,
@@ -515,18 +521,20 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           .from("opportunities")
           .insert({
             contact_id: opportunity.contactId,
+            product: opportunity.product,
             stage,
             value: opportunity.value,
             next_action: opportunity.nextAction,
             next_action_at: opportunity.nextActionAt,
           })
-          .select("id,contact_id,stage,value,next_action,next_action_at,lost_reason")
+          .select("id,contact_id,product,stage,value,next_action,next_action_at,lost_reason")
           .single();
         if (insertError) throw insertError;
         setOpportunities((items) => [
           {
             id: data.id,
             contactId: data.contact_id,
+            product: data.product,
             stage: data.stage as Stage,
             value: Number(data.value),
             nextAction: data.next_action,

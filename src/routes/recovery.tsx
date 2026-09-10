@@ -40,6 +40,7 @@ function RecuperacoesPage() {
 
   async function sendWhatsApp(contactId: string, opportunityId: string) {
     const contact = contacts.find((c) => c.id === contactId);
+    const opportunity = opportunities.find((o) => o.id === opportunityId);
     if (!contact) return;
     if (!supabase) {
       toast.error("Configure o Supabase para enviar mensagens de recuperação.");
@@ -52,7 +53,7 @@ function RecuperacoesPage() {
         p_opportunity_id: opportunityId,
         p_channel: "whatsapp",
         p_automation_type: "recovery",
-        p_message: `Olá ${contact.name.split(" ")[0]}, vi que ficamos de retomar a conversa sobre ${contact.product}. Podemos continuar?`,
+        p_message: `Olá ${contact.name.split(" ")[0]}, vi que ficamos de retomar a conversa sobre ${opportunity?.product ?? contact.product}. Podemos continuar?`,
       });
       if (error) throw error;
       toast.success("Mensagem enfileirada para envio pelo WhatsApp.");
@@ -128,7 +129,7 @@ function RecuperacoesPage() {
                 <div>
                   <p className="font-semibold">{c?.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {c?.product} · {item.lostReason || c?.tags.join(", ")} ·{" "}
+                    {item.product} · {item.lostReason || c?.tags.join(", ")} ·{" "}
                     {daysSince(item.nextActionAt)} dia(s) parado
                   </p>
                 </div>
