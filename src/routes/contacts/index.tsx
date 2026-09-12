@@ -15,6 +15,9 @@ import {
 import { products as staticProducts, useCRM, type Product } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { CompanyField } from "@/components/contacts/CompanyField";
+import { CampaignField } from "@/components/contacts/CampaignField";
+import { SourceField } from "@/components/contacts/SourceField";
+import { OwnerField } from "@/components/contacts/OwnerField";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/contacts/")({ component: ContatosPage });
@@ -117,9 +120,9 @@ function ContatosPage() {
                   <option key={p}>{p}</option>
                 ))}
               </select>
-              <Input name="source" placeholder="Origem" />
-              <Input name="campaign" placeholder="Campanha ou evento" />
-              <Input name="owner" placeholder="Responsável" defaultValue="Roberta" />
+              <SourceField />
+              <CampaignField />
+              <OwnerField defaultValue="Roberta" />
               <textarea
                 name="notes"
                 placeholder="Observações"

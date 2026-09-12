@@ -25,7 +25,12 @@ interface FunnelStageRow {
 }
 
 function isMissingTable(error: { code?: string; message?: string } | null) {
-  return error?.code === "42P01" || Boolean(error?.message?.includes("does not exist"));
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    Boolean(error?.message?.includes("does not exist")) ||
+    Boolean(error?.message?.includes("Could not find the table"))
+  );
 }
 
 function PipelinePage() {

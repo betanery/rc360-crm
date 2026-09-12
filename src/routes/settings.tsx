@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
   Bot,
+  Building2,
   CheckCircle2,
   Copy,
   KanbanSquare,
@@ -13,9 +14,12 @@ import {
   ShoppingCart,
   Tags,
   Trash2,
+  Upload,
   UserPlus,
   Users,
+  Waypoints,
 } from "lucide-react";
+import Papa from "papaparse";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +35,8 @@ import {
 import { products } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+
+const IMPORT_BATCH_SIZE = 1000;
 
 export const Route = createFileRoute("/settings")({ component: ConfiguracoesPage });
 const fieldClass = "h-9 rounded-md border bg-background px-2 text-sm";
@@ -51,6 +57,10 @@ interface TagRow {
   name: string;
   color: string | null;
 }
+interface LookupRow {
+  id: string;
+  name: string;
+}
 interface StageRow {
   id: string;
   name: string;
@@ -60,7 +70,12 @@ interface StageRow {
 }
 
 function isMissingTable(error: { code?: string; message?: string } | null) {
-  return error?.code === "42P01" || Boolean(error?.message?.includes("does not exist"));
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    Boolean(error?.message?.includes("does not exist")) ||
+    Boolean(error?.message?.includes("Could not find the table"))
+  );
 }
 
 function ConfiguracoesPage() {
@@ -87,6 +102,17 @@ function ConfiguracoesPage() {
   const [funnelStages, setFunnelStages] = useState<StageRow[]>([]);
   const [stagesAvailable, setStagesAvailable] = useState(true);
   const [newStage, setNewStage] = useState("");
+
+  const [leadSources, setLeadSources] = useState<LookupRow[]>([]);
+  const [leadSourcesAvailable, setLeadSourcesAvailable] = useState(true);
+  const [newLeadSource, setNewLeadSource] = useState("");
+
+  const [companySegments, setCompanySegments] = useState<LookupRow[]>([]);
+  const [companySegmentsAvailable, setCompanySegmentsAvailable] = useState(true);
+  const [newCompanySegment, setNewCompanySegment] = useState("");
+
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState("");
 
   async function loadProfiles() {
     if (!supabase) return;
@@ -122,10 +148,40 @@ function ConfiguracoesPage() {
     setFunnelStages((data ?? []) as StageRow[]);
   }
 
+  async function loadLeadSources() {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("lead_sources")
+      .select("id,name")
+      .order("name", { ascending: true });
+    if (error) {
+      if (isMissingTable(error)) setLeadSourcesAvailable(false);
+      else toast.error(error.message);
+      return;
+    }
+    setLeadSources((data ?? []) as LookupRow[]);
+  }
+
+  async function loadCompanySegments() {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("company_segments")
+      .select("id,name")
+      .order("name", { ascending: true });
+    if (error) {
+      if (isMissingTable(error)) setCompanySegmentsAvailable(false);
+      else toast.error(error.message);
+      return;
+    }
+    setCompanySegments((data ?? []) as LookupRow[]);
+  }
+
   useEffect(() => {
     void loadProfiles();
     void loadTags();
     void loadStages();
+    void loadLeadSources();
+    void loadCompanySegments();
   }, []);
 
   async function testBotConversa() {
@@ -307,6 +363,110 @@ function ConfiguracoesPage() {
     void loadStages();
   }
 
+  async function addLeadSource(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+    const name = newLeadSource.trim();
+    if (!name) return;
+    const { error } = await supabase.from("lead_sources").insert({ name });
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "Essa origem já existe." : error.message);
+      return;
+    }
+    setNewLeadSource("");
+    toast.success("Origem criada.");
+    void loadLeadSources();
+  }
+
+  async function deleteLeadSource(id: string) {
+    if (!supabase) return;
+    const { error } = await supabase.from("lead_sources").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Origem removida.");
+    void loadLeadSources();
+  }
+
+  async function addCompanySegment(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!supabase) return;
+    const name = newCompanySegment.trim();
+    if (!name) return;
+    const { error } = await supabase.from("company_segments").insert({ name });
+    if (error) {
+      toast.error(error.message.includes("duplicate") ? "Esse segmento já existe." : error.message);
+      return;
+    }
+    setNewCompanySegment("");
+    toast.success("Segmento criado.");
+    void loadCompanySegments();
+  }
+
+  async function deleteCompanySegment(id: string) {
+    if (!supabase) return;
+    const { error } = await supabase.from("company_segments").delete().eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success("Segmento removido.");
+    void loadCompanySegments();
+  }
+
+  async function importContactsFile(file: File) {
+    if (!supabase) return;
+    setImporting(true);
+    setImportResult("");
+    try {
+      const parsed = await new Promise<Papa.ParseResult<Record<string, string>>>(
+        (resolve, reject) => {
+          Papa.parse<Record<string, string>>(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: resolve,
+            error: reject,
+          });
+        },
+      );
+      const rows = parsed.data;
+      if (!rows.length) throw new Error("Arquivo vazio ou sem linhas válidas.");
+
+      let created = 0;
+      let updated = 0;
+      let skipped = 0;
+      const firstErrors: string[] = [];
+
+      for (let i = 0; i < rows.length; i += IMPORT_BATCH_SIZE) {
+        const batch = rows.slice(i, i + IMPORT_BATCH_SIZE);
+        const { data, error } = await supabase.functions.invoke("crm-import", {
+          body: { rows: batch },
+        });
+        if (error) throw error;
+        if (!data?.ok) throw new Error(data?.error || "Falha ao importar o lote.");
+        created += data.created ?? 0;
+        updated += data.updated ?? 0;
+        skipped += data.skipped ?? 0;
+        for (const item of data.errors ?? []) {
+          if (firstErrors.length < 5) firstErrors.push(`Linha ${item.row}: ${item.error}`);
+        }
+      }
+
+      setImportResult(
+        `Importação concluída: ${created} criado(s), ${updated} atualizado(s), ${skipped} pulado(s).` +
+          (firstErrors.length ? ` Exemplos de erro: ${firstErrors.join(" · ")}` : ""),
+      );
+      toast.success("Importação concluída.");
+    } catch (reason) {
+      const message = reason instanceof Error ? reason.message : "Não foi possível importar.";
+      setImportResult(`Erro: ${message}`);
+      toast.error(message);
+    } finally {
+      setImporting(false);
+    }
+  }
+
   const inboundWebhookUrl = "https://vvmsikxxoamwqjuihtjk.supabase.co/functions/v1/crm-inbound";
 
   function copyWebhookUrl() {
@@ -398,6 +558,118 @@ function ConfiguracoesPage() {
                   ))}
                   {!tags.length && (
                     <span className="text-sm text-muted-foreground">Nenhuma tag cadastrada.</span>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Waypoints className="h-5 w-5" />
+              Origem
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!supabase && (
+              <p className="text-sm text-muted-foreground">
+                Modo demonstração: conecte o Supabase para gerenciar origens.
+              </p>
+            )}
+            {supabase && !leadSourcesAvailable && (
+              <p className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+                Recurso pendente: aplique a migration 007_source_campaign_segment_lookups.sql no
+                Supabase.
+              </p>
+            )}
+            {supabase && leadSourcesAvailable && (
+              <>
+                <form onSubmit={addLeadSource} className="flex gap-2">
+                  <Input
+                    value={newLeadSource}
+                    onChange={(e) => setNewLeadSource(e.target.value)}
+                    placeholder="Nova origem"
+                  />
+                  <Button type="submit" size="icon" aria-label="Adicionar origem">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </form>
+                <div className="flex flex-wrap gap-2">
+                  {leadSources.map((source) => (
+                    <Badge key={source.id} variant="secondary" className="gap-1 px-3 py-1">
+                      {source.name}
+                      <button
+                        onClick={() => void deleteLeadSource(source.id)}
+                        aria-label={`Remover origem ${source.name}`}
+                        className="ml-1 rounded-full hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {!leadSources.length && (
+                    <span className="text-sm text-muted-foreground">
+                      Nenhuma origem cadastrada.
+                    </span>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Segmentos de empresa
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!supabase && (
+              <p className="text-sm text-muted-foreground">
+                Modo demonstração: conecte o Supabase para gerenciar segmentos.
+              </p>
+            )}
+            {supabase && !companySegmentsAvailable && (
+              <p className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
+                Recurso pendente: aplique a migration 007_source_campaign_segment_lookups.sql no
+                Supabase.
+              </p>
+            )}
+            {supabase && companySegmentsAvailable && (
+              <>
+                <form onSubmit={addCompanySegment} className="flex gap-2">
+                  <Input
+                    value={newCompanySegment}
+                    onChange={(e) => setNewCompanySegment(e.target.value)}
+                    placeholder="Novo segmento"
+                  />
+                  <Button type="submit" size="icon" aria-label="Adicionar segmento">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </form>
+                <div className="flex flex-wrap gap-2">
+                  {companySegments.map((segment) => (
+                    <Badge key={segment.id} variant="secondary" className="gap-1 px-3 py-1">
+                      {segment.name}
+                      <button
+                        onClick={() => void deleteCompanySegment(segment.id)}
+                        aria-label={`Remover segmento ${segment.name}`}
+                        className="ml-1 rounded-full hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {!companySegments.length && (
+                    <span className="text-sm text-muted-foreground">
+                      Nenhum segmento cadastrado.
+                    </span>
                   )}
                 </div>
               </>
@@ -526,6 +798,55 @@ function ConfiguracoesPage() {
             ))}
           {supabase && !profiles.length && (
             <p className="text-sm text-muted-foreground">Nenhum usuário encontrado.</p>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Upload className="h-5 w-5" />
+            Importar contatos (CSV)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!supabase && (
+            <p className="text-sm text-muted-foreground">
+              Modo demonstração: conecte o Supabase para importar contatos.
+            </p>
+          )}
+          {supabase && (
+            <>
+              <p className="text-sm text-muted-foreground">
+                O arquivo precisa ter cabeçalho com as colunas: <code>nome</code>,{" "}
+                <code>telefone</code>, <code>email</code>, <code>empresa</code>,{" "}
+                <code>produto</code> (precisa ser um produto já cadastrado), <code>origem</code>,{" "}
+                <code>campanha</code>, <code>observacoes</code>. Contatos com o mesmo telefone ou
+                e-mail já existente são atualizados, não duplicados.
+              </p>
+              <Input
+                type="file"
+                accept=".csv"
+                disabled={importing}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  e.target.value = "";
+                  if (file) void importContactsFile(file);
+                }}
+              />
+              {importing && (
+                <p className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Importando…
+                </p>
+              )}
+              {importResult && (
+                <p
+                  className={`text-sm ${importResult.startsWith("Erro") ? "text-destructive" : "text-emerald-700"}`}
+                >
+                  {importResult}
+                </p>
+              )}
+            </>
           )}
         </CardContent>
       </Card>

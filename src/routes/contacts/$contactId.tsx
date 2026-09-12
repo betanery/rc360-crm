@@ -34,6 +34,9 @@ import {
 } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { CompanyField } from "@/components/contacts/CompanyField";
+import { CampaignField } from "@/components/contacts/CampaignField";
+import { SourceField } from "@/components/contacts/SourceField";
+import { OwnerField } from "@/components/contacts/OwnerField";
 import { TagManager } from "@/components/contacts/TagManager";
 import { toast } from "sonner";
 
@@ -244,13 +247,9 @@ function ContatoDetalhePage() {
                     <option key={p}>{p}</option>
                   ))}
                 </select>
-                <Input name="source" placeholder="Origem" defaultValue={contact.source} />
-                <Input
-                  name="campaign"
-                  placeholder="Campanha ou evento"
-                  defaultValue={contact.campaign}
-                />
-                <Input name="owner" placeholder="Responsável" defaultValue={contact.owner} />
+                <SourceField defaultValue={contact.source} />
+                <CampaignField defaultValue={contact.campaign} />
+                <OwnerField defaultValue={contact.owner} />
                 <textarea
                   name="notes"
                   placeholder="Observações"

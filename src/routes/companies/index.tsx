@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/dialog";
 import { useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
+import { SegmentField } from "@/components/contacts/SegmentField";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/companies/")({ component: EmpresasPage });
@@ -26,7 +27,12 @@ interface CompanyRow {
 const MIGRATION_PENDING = "Recurso pendente: aplique a migration 004_companies.sql no Supabase.";
 
 function isMissingTable(error: { code?: string; message?: string } | null) {
-  return error?.code === "42P01" || Boolean(error?.message?.includes("does not exist"));
+  return (
+    error?.code === "42P01" ||
+    error?.code === "PGRST205" ||
+    Boolean(error?.message?.includes("does not exist")) ||
+    Boolean(error?.message?.includes("Could not find the table"))
+  );
 }
 
 function EmpresasPage() {
@@ -132,7 +138,7 @@ function EmpresasPage() {
             </DialogHeader>
             <form onSubmit={createCompany} className="grid gap-3">
               <Input name="name" placeholder="Nome da empresa *" required />
-              <Input name="segment" placeholder="Segmento" />
+              <SegmentField />
               <Button>Salvar empresa</Button>
             </form>
           </DialogContent>

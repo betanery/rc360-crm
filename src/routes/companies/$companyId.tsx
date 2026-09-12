@@ -3,10 +3,10 @@ import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
+import { SegmentField } from "@/components/contacts/SegmentField";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/companies/$companyId")({ component: EmpresaDetalhePage });
@@ -95,7 +95,7 @@ function EmpresaDetalhePage() {
         </CardHeader>
         <CardContent>
           <form onSubmit={save} className="grid gap-3 sm:grid-cols-2">
-            <Input name="segment" placeholder="Segmento" defaultValue={company.segment ?? ""} />
+            <SegmentField defaultValue={company.segment ?? ""} />
             <textarea
               name="notes"
               placeholder="Observações"

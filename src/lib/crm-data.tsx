@@ -274,6 +274,14 @@ async function ensureCompany(name: string) {
     .upsert({ name: trimmed }, { onConflict: "organization_id,name", ignoreDuplicates: true });
 }
 
+async function ensureCampaign(name: string) {
+  const trimmed = name.trim();
+  if (!trimmed || !supabase) return;
+  await supabase
+    .from("campaigns")
+    .upsert({ name: trimmed }, { onConflict: "organization_id,name", ignoreDuplicates: true });
+}
+
 export function CRMProvider({ children }: { children: ReactNode }) {
   const [contacts, setContacts] = useState<Contact[]>(isSupabaseConfigured ? [] : demoContacts);
   const [opportunities, setOpportunities] = useState<Opportunity[]>(
@@ -389,6 +397,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           return;
         }
         await ensureCompany(contact.company);
+        await ensureCampaign(contact.campaign);
         const { data, error: insertError } = await supabase
           .from("contacts")
           .insert({
@@ -423,6 +432,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           return;
         }
         await ensureCompany(contact.company);
+        await ensureCampaign(contact.campaign);
         const { error: updateError } = await supabase
           .from("contacts")
           .update({
