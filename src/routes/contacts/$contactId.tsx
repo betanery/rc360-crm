@@ -39,6 +39,7 @@ import { CompanyField } from "@/components/contacts/CompanyField";
 import { CampaignField } from "@/components/contacts/CampaignField";
 import { SourceField } from "@/components/contacts/SourceField";
 import { OwnerField } from "@/components/contacts/OwnerField";
+import { QualificationField } from "@/components/contacts/QualificationField";
 import { TagManager } from "@/components/contacts/TagManager";
 import { toast } from "sonner";
 
@@ -109,6 +110,11 @@ function ContatoDetalhePage() {
         campaign: String(d.get("campaign")),
         owner: String(d.get("owner")),
         notes: String(d.get("notes")),
+        marketTime: String(d.get("marketTime")),
+        teamSize: String(d.get("teamSize")),
+        referredBy: String(d.get("referredBy")),
+        mainPain: String(d.get("mainPain")),
+        wantsFeedback: String(d.get("wantsFeedback")),
       });
       setOpen(false);
       toast.success("Contato atualizado.");
@@ -143,6 +149,11 @@ function ContatoDetalhePage() {
         campaign: contact!.campaign,
         owner: contact!.owner,
         notes: notesDraft,
+        marketTime: contact!.marketTime,
+        teamSize: contact!.teamSize,
+        referredBy: contact!.referredBy,
+        mainPain: contact!.mainPain,
+        wantsFeedback: contact!.wantsFeedback,
       });
       setEditingNotes(false);
       toast.success("Observações salvas.");
@@ -267,6 +278,36 @@ function ContatoDetalhePage() {
                 <SourceField defaultValue={contact.source} />
                 <CampaignField defaultValue={contact.campaign} />
                 <OwnerField defaultValue={contact.owner} />
+                <QualificationField
+                  field="market_time"
+                  name="marketTime"
+                  placeholder="Tempo de mercado"
+                  defaultValue={contact.marketTime}
+                />
+                <QualificationField
+                  field="team_size"
+                  name="teamSize"
+                  placeholder="Tamanho da equipe"
+                  defaultValue={contact.teamSize}
+                />
+                <QualificationField
+                  field="referred_by"
+                  name="referredBy"
+                  placeholder="Indicado por"
+                  defaultValue={contact.referredBy}
+                />
+                <QualificationField
+                  field="main_pain"
+                  name="mainPain"
+                  placeholder="Maior dor"
+                  defaultValue={contact.mainPain}
+                />
+                <QualificationField
+                  field="wants_feedback"
+                  name="wantsFeedback"
+                  placeholder="Quer devolutiva?"
+                  defaultValue={contact.wantsFeedback}
+                />
                 <textarea
                   name="notes"
                   placeholder="Observações"
@@ -331,6 +372,33 @@ function ContatoDetalhePage() {
             <p>
               <span className="text-muted-foreground">Responsável:</span> {contact.owner || "—"}
             </p>
+            {contact.marketTime && (
+              <p>
+                <span className="text-muted-foreground">Tempo de mercado:</span>{" "}
+                {contact.marketTime}
+              </p>
+            )}
+            {contact.teamSize && (
+              <p>
+                <span className="text-muted-foreground">Tamanho da equipe:</span> {contact.teamSize}
+              </p>
+            )}
+            {contact.referredBy && (
+              <p>
+                <span className="text-muted-foreground">Indicado por:</span> {contact.referredBy}
+              </p>
+            )}
+            {contact.mainPain && (
+              <p>
+                <span className="text-muted-foreground">Maior dor:</span> {contact.mainPain}
+              </p>
+            )}
+            {contact.wantsFeedback && (
+              <p>
+                <span className="text-muted-foreground">Quer devolutiva:</span>{" "}
+                {contact.wantsFeedback}
+              </p>
+            )}
             <p>
               <span className="text-muted-foreground">Cadastrado em:</span>{" "}
               {shortDate(contact.createdAt)}

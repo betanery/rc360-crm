@@ -4,6 +4,7 @@ import {
   Bot,
   Building2,
   CheckCircle2,
+  ClipboardList,
   Copy,
   KanbanSquare,
   Loader2,
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/dialog";
 import { products } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
+import { QualificationOptionsManager } from "@/components/contacts/QualificationOptionsManager";
 import { toast } from "sonner";
 
 const IMPORT_BATCH_SIZE = 1000;
@@ -696,6 +698,31 @@ function ConfiguracoesPage() {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
+            <ClipboardList className="h-5 w-5" />
+            Qualificação de leads
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {!supabase && (
+            <p className="text-sm text-muted-foreground">
+              Modo demonstração: conecte o Supabase para gerenciar as opções de qualificação.
+            </p>
+          )}
+          {supabase && (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <QualificationOptionsManager field="market_time" label="Tempo de mercado" />
+              <QualificationOptionsManager field="team_size" label="Tamanho da equipe" />
+              <QualificationOptionsManager field="referred_by" label="Indicado por" />
+              <QualificationOptionsManager field="main_pain" label="Maior dor" />
+              <QualificationOptionsManager field="wants_feedback" label="Quer devolutiva?" />
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
             <KanbanSquare className="h-5 w-5" />
             Funis
           </CardTitle>
@@ -837,7 +864,9 @@ function ConfiguracoesPage() {
                 <code>telefone</code>, <code>email</code>, <code>empresa</code>,{" "}
                 <code>produto</code> (precisa ser um produto já cadastrado), <code>origem</code>,{" "}
                 <code>campanha</code>, <code>observacoes</code>. Contatos com o mesmo telefone ou
-                e-mail já existente são atualizados, não duplicados.
+                e-mail já existente são atualizados, não duplicados. Também aceita, opcionalmente,{" "}
+                <code>tempo_mercado</code>, <code>tamanho_equipe</code>, <code>indicado_por</code>,{" "}
+                <code>maior_dor</code> e <code>quer_devolutiva</code>.
               </p>
               <Input
                 type="file"

@@ -25,6 +25,11 @@ export interface Contact {
   tags: string[];
   createdAt: string;
   notes?: string | undefined;
+  marketTime: string;
+  teamSize: string;
+  referredBy: string;
+  mainPain: string;
+  wantsFeedback: string;
 }
 export interface Opportunity {
   id: string;
@@ -75,6 +80,11 @@ const demoContacts: Contact[] = [
     owner: "Roberta",
     tags: ["Qualificada"],
     createdAt: iso(-8),
+    marketTime: "",
+    teamSize: "",
+    referredBy: "",
+    mainPain: "",
+    wantsFeedback: "",
   },
   {
     id: "c2",
@@ -88,6 +98,11 @@ const demoContacts: Contact[] = [
     owner: "Cinthia",
     tags: ["Pediu call"],
     createdAt: iso(-4),
+    marketTime: "",
+    teamSize: "",
+    referredBy: "",
+    mainPain: "",
+    wantsFeedback: "",
   },
   {
     id: "c3",
@@ -101,6 +116,11 @@ const demoContacts: Contact[] = [
     owner: "Roberta",
     tags: ["Lead Rotas"],
     createdAt: iso(-2),
+    marketTime: "",
+    teamSize: "",
+    referredBy: "",
+    mainPain: "",
+    wantsFeedback: "",
   },
   {
     id: "c4",
@@ -114,6 +134,11 @@ const demoContacts: Contact[] = [
     owner: "Roberta",
     tags: ["Participou", "Proposta sem retorno"],
     createdAt: iso(-12),
+    marketTime: "",
+    teamSize: "",
+    referredBy: "",
+    mainPain: "",
+    wantsFeedback: "",
   },
   {
     id: "c5",
@@ -127,6 +152,11 @@ const demoContacts: Contact[] = [
     owner: "Cinthia",
     tags: ["Não respondeu"],
     createdAt: iso(-6),
+    marketTime: "",
+    teamSize: "",
+    referredBy: "",
+    mainPain: "",
+    wantsFeedback: "",
   },
 ];
 const demoOpportunities: Opportunity[] = [
@@ -240,6 +270,11 @@ type ContactRow = {
   campaign: string | null;
   owner_name: string | null;
   notes: string | null;
+  market_time: string | null;
+  team_size: string | null;
+  referred_by: string | null;
+  main_pain: string | null;
+  wants_feedback: string | null;
   created_at: string;
   contact_tags?: ContactRelation[] | null;
 };
@@ -264,6 +299,11 @@ function mapContact(row: ContactRow): Contact {
     tags,
     notes: row.notes ?? undefined,
     createdAt: row.created_at,
+    marketTime: row.market_time ?? "",
+    teamSize: row.team_size ?? "",
+    referredBy: row.referred_by ?? "",
+    mainPain: row.main_pain ?? "",
+    wantsFeedback: row.wants_feedback ?? "",
   };
 }
 
@@ -301,7 +341,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       supabase
         .from("contacts")
         .select(
-          "id,name,company,phone,email,product,source,campaign,owner_name,notes,created_at,contact_tags(tags(name))",
+          "id,name,company,phone,email,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at,contact_tags(tags(name))",
         )
         .order("created_at", { ascending: false }),
       supabase.from("opportunities").select("*").order("created_at", { ascending: false }),
@@ -411,8 +451,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             campaign: contact.campaign || null,
             owner_name: contact.owner || null,
             notes: contact.notes || null,
+            market_time: contact.marketTime || null,
+            team_size: contact.teamSize || null,
+            referred_by: contact.referredBy || null,
+            main_pain: contact.mainPain || null,
+            wants_feedback: contact.wantsFeedback || null,
           })
-          .select("id,name,company,phone,email,product,source,campaign,owner_name,notes,created_at")
+          .select(
+            "id,name,company,phone,email,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at",
+          )
           .single();
         if (insertError) throw insertError;
         setContacts((items) => [mapContact(data as ContactRow), ...items]);
@@ -446,6 +493,11 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             campaign: contact.campaign || null,
             owner_name: contact.owner || null,
             notes: contact.notes || null,
+            market_time: contact.marketTime || null,
+            team_size: contact.teamSize || null,
+            referred_by: contact.referredBy || null,
+            main_pain: contact.mainPain || null,
+            wants_feedback: contact.wantsFeedback || null,
           })
           .eq("id", id);
         if (updateError) throw updateError;

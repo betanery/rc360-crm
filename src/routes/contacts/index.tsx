@@ -18,6 +18,7 @@ import { CompanyField } from "@/components/contacts/CompanyField";
 import { CampaignField } from "@/components/contacts/CampaignField";
 import { SourceField } from "@/components/contacts/SourceField";
 import { OwnerField } from "@/components/contacts/OwnerField";
+import { QualificationField } from "@/components/contacts/QualificationField";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/contacts/")({ component: ContatosPage });
@@ -29,6 +30,8 @@ function ContatosPage() {
   const [query, setQuery] = useState("");
   const [origin, setOrigin] = useState(ALL);
   const [tag, setTag] = useState(ALL);
+  const [mainPain, setMainPain] = useState(ALL);
+  const [wantsFeedback, setWantsFeedback] = useState(ALL);
   const [open, setOpen] = useState(false);
   const [activeProducts, setActiveProducts] = useState<string[]>(staticProducts);
 
@@ -52,6 +55,14 @@ function ContatosPage() {
     () => Array.from(new Set(contacts.flatMap((c) => c.tags))).sort(),
     [contacts],
   );
+  const mainPains = useMemo(
+    () => Array.from(new Set(contacts.map((c) => c.mainPain).filter(Boolean))).sort(),
+    [contacts],
+  );
+  const feedbackOptions = useMemo(
+    () => Array.from(new Set(contacts.map((c) => c.wantsFeedback).filter(Boolean))).sort(),
+    [contacts],
+  );
 
   const filtered = useMemo(
     () =>
@@ -61,9 +72,11 @@ function ContatosPage() {
           .includes(query.toLowerCase());
         const matchesOrigin = origin === ALL || c.source === origin;
         const matchesTag = tag === ALL || c.tags.includes(tag);
-        return matchesQuery && matchesOrigin && matchesTag;
+        const matchesMainPain = mainPain === ALL || c.mainPain === mainPain;
+        const matchesFeedback = wantsFeedback === ALL || c.wantsFeedback === wantsFeedback;
+        return matchesQuery && matchesOrigin && matchesTag && matchesMainPain && matchesFeedback;
       }),
-    [contacts, query, origin, tag],
+    [contacts, query, origin, tag, mainPain, wantsFeedback],
   );
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -80,6 +93,11 @@ function ContatosPage() {
         campaign: String(d.get("campaign")),
         owner: String(d.get("owner")),
         notes: String(d.get("notes")),
+        marketTime: String(d.get("marketTime")),
+        teamSize: String(d.get("teamSize")),
+        referredBy: String(d.get("referredBy")),
+        mainPain: String(d.get("mainPain")),
+        wantsFeedback: String(d.get("wantsFeedback")),
       });
       setOpen(false);
       toast.success("Contato salvo.");
@@ -123,6 +141,27 @@ function ContatosPage() {
               <SourceField />
               <CampaignField />
               <OwnerField defaultValue="Roberta" />
+              <QualificationField
+                field="market_time"
+                name="marketTime"
+                placeholder="Tempo de mercado"
+              />
+              <QualificationField
+                field="team_size"
+                name="teamSize"
+                placeholder="Tamanho da equipe"
+              />
+              <QualificationField
+                field="referred_by"
+                name="referredBy"
+                placeholder="Indicado por"
+              />
+              <QualificationField field="main_pain" name="mainPain" placeholder="Maior dor" />
+              <QualificationField
+                field="wants_feedback"
+                name="wantsFeedback"
+                placeholder="Quer devolutiva?"
+              />
               <textarea
                 name="notes"
                 placeholder="Observações"
@@ -166,6 +205,32 @@ function ContatosPage() {
           {tags.map((t) => (
             <option key={t} value={t}>
               {t}
+            </option>
+          ))}
+        </select>
+        <select
+          className={`${fieldClass} w-auto min-w-40`}
+          value={mainPain}
+          onChange={(e) => setMainPain(e.target.value)}
+          aria-label="Filtro por maior dor"
+        >
+          <option value={ALL}>Todas as dores</option>
+          {mainPains.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+        <select
+          className={`${fieldClass} w-auto min-w-40`}
+          value={wantsFeedback}
+          onChange={(e) => setWantsFeedback(e.target.value)}
+          aria-label="Filtro por interesse em devolutiva"
+        >
+          <option value={ALL}>Todas as devolutivas</option>
+          {feedbackOptions.map((f) => (
+            <option key={f} value={f}>
+              {f}
             </option>
           ))}
         </select>
