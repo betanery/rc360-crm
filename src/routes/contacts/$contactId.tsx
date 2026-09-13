@@ -1,9 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
   Instagram,
   Linkedin,
+  Loader2,
   Mail,
   Pencil,
   Phone,
@@ -11,6 +12,7 @@ import {
   Save,
   Search,
   Tag,
+  Trash2,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,9 +48,12 @@ const TASK_TYPES: Task["type"][] = ["Call", "Ligação", "WhatsApp", "E-mail", "
 
 function ContatoDetalhePage() {
   const { contactId } = Route.useParams();
-  const { contacts, opportunities, tasks, carts, updateContact, addTask } = useCRM();
+  const navigate = useNavigate();
+  const { contacts, opportunities, tasks, carts, updateContact, deleteContact, addTask } = useCRM();
   const contact = contacts.find((c) => c.id === contactId);
   const [open, setOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [activeProducts, setActiveProducts] = useState<string[]>(staticProducts);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [editingNotes, setEditingNotes] = useState(false);
@@ -111,6 +116,18 @@ function ContatoDetalhePage() {
       toast.error(
         reason instanceof Error ? reason.message : "Não foi possível atualizar o contato.",
       );
+    }
+  }
+
+  async function removeContact() {
+    setDeleting(true);
+    try {
+      await deleteContact(contactId);
+      toast.success("Contato excluído.");
+      void navigate({ to: "/contacts" });
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Não foi possível excluir o contato.");
+      setDeleting(false);
     }
   }
 
@@ -258,6 +275,42 @@ function ContatoDetalhePage() {
                 />
                 <Button className="sm:col-span-2">Salvar alterações</Button>
               </form>
+            </DialogContent>
+          </Dialog>
+          <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-destructive hover:text-destructive"
+              onClick={() => setDeleteOpen(true)}
+            >
+              <Trash2 className="h-3.5 w-3.5" /> Excluir
+            </Button>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Excluir contato</DialogTitle>
+                <DialogDescription>
+                  Isso apaga {contact.name} e tudo vinculado a ele (oportunidades, tarefas,
+                  carrinhos e histórico). Não pode ser desfeito.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setDeleteOpen(false)} disabled={deleting}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => void removeContact()}
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Excluir definitivamente
+                </Button>
+              </div>
             </DialogContent>
           </Dialog>
         </div>

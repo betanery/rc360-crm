@@ -213,6 +213,7 @@ interface CRMContextValue {
   carts: CartRecovery[];
   addContact: (contact: Omit<Contact, "id" | "createdAt" | "tags">) => Promise<void>;
   updateContact: (id: string, contact: Omit<Contact, "id" | "createdAt" | "tags">) => Promise<void>;
+  deleteContact: (id: string) => Promise<void>;
   addContactTag: (contactId: string, tagName: string) => Promise<void>;
   removeContactTag: (contactId: string, tagName: string) => Promise<void>;
   addOpportunity: (
@@ -451,6 +452,21 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         setContacts((items) =>
           items.map((item) => (item.id === id ? { ...item, ...contact } : item)),
         );
+      },
+      deleteContact: async (id) => {
+        if (!supabase) {
+          setContacts((items) => items.filter((item) => item.id !== id));
+          setOpportunities((items) => items.filter((item) => item.contactId !== id));
+          setTasks((items) => items.filter((item) => item.contactId !== id));
+          setCarts((items) => items.filter((item) => item.contactId !== id));
+          return;
+        }
+        const { error: deleteError } = await supabase.from("contacts").delete().eq("id", id);
+        if (deleteError) throw deleteError;
+        setContacts((items) => items.filter((item) => item.id !== id));
+        setOpportunities((items) => items.filter((item) => item.contactId !== id));
+        setTasks((items) => items.filter((item) => item.contactId !== id));
+        setCarts((items) => items.filter((item) => item.contactId !== id));
       },
       addContactTag: async (contactId, tagName) => {
         const trimmed = tagName.trim();
