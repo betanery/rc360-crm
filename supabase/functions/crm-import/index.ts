@@ -64,10 +64,10 @@ Deno.serve(async (req) => {
     try {
       const name = String(row.name || row.nome || "").trim();
       const phone = normalizePhone(row.phone || row.telefone || row.whatsapp);
-      const email =
-        String(row.email || "")
-          .trim()
-          .toLowerCase() || null;
+      const emailRaw = String(row.email || "")
+        .trim()
+        .toLowerCase();
+      const email = emailRaw.includes("@") ? emailRaw : null;
       const product = String(row.product || row.produto || "").trim();
       if (!name || !phone || !allowedProducts.includes(product)) {
         skipped++;
