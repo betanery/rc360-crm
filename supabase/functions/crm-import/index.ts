@@ -126,7 +126,13 @@ Deno.serve(async (req) => {
       }
     } catch (error) {
       skipped++;
-      errors.push({ row: i + 1, error: error instanceof Error ? error.message : String(error) });
+      const message =
+        error instanceof Error
+          ? error.message
+          : error && typeof error === "object" && "message" in error
+            ? String((error as { message: unknown }).message)
+            : String(error);
+      errors.push({ row: i + 1, error: message });
     }
   }
 
