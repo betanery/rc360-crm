@@ -415,6 +415,21 @@ function ConfiguracoesPage() {
     void loadCompanySegments();
   }
 
+  async function extractFunctionErrorMessage(error: unknown): Promise<string> {
+    if (error && typeof error === "object" && "context" in error) {
+      const context = (error as { context: unknown }).context;
+      if (context instanceof Response) {
+        try {
+          const body = await context.clone().json();
+          if (body?.error) return String(body.error);
+        } catch {
+          // corpo não era JSON legível, usa a mensagem genérica abaixo
+        }
+      }
+    }
+    return error instanceof Error ? error.message : "Falha ao importar o lote.";
+  }
+
   async function importContactsFile(file: File) {
     if (!supabase) return;
     setImporting(true);
@@ -443,7 +458,7 @@ function ConfiguracoesPage() {
         const { data, error } = await supabase.functions.invoke("crm-import", {
           body: { rows: batch },
         });
-        if (error) throw error;
+        if (error) throw new Error(await extractFunctionErrorMessage(error));
         if (!data?.ok) throw new Error(data?.error || "Falha ao importar o lote.");
         created += data.created ?? 0;
         updated += data.updated ?? 0;
