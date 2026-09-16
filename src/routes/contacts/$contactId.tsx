@@ -105,6 +105,7 @@ function ContatoDetalhePage() {
         company: String(d.get("company")),
         phone: String(d.get("phone")),
         email: String(d.get("email")),
+        instagram: String(d.get("instagram")),
         product: String(d.get("product")) as Product,
         source: String(d.get("source")),
         campaign: String(d.get("campaign")),
@@ -144,6 +145,7 @@ function ContatoDetalhePage() {
         company: contact!.company,
         phone: contact!.phone,
         email: contact!.email,
+        instagram: contact!.instagram,
         product: contact!.product,
         source: contact!.source,
         campaign: contact!.campaign,
@@ -215,6 +217,11 @@ function ContatoDetalhePage() {
                 <Mail className="h-3.5 w-3.5" /> {contact.email}
               </span>
             )}
+            {contact.instagram && (
+              <span className="flex items-center gap-1">
+                <Instagram className="h-3.5 w-3.5" /> {contact.instagram}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -239,7 +246,11 @@ function ContatoDetalhePage() {
           </Button>
           <Button variant="outline" size="sm" asChild>
             <a
-              href={`https://www.instagram.com/explore/search/keyword/?q=${searchTerm}`}
+              href={
+                contact.instagram
+                  ? `https://www.instagram.com/${contact.instagram.replace(/^@/, "")}`
+                  : `https://www.instagram.com/explore/search/keyword/?q=${searchTerm}`
+              }
               target="_blank"
               rel="noreferrer"
             >
@@ -269,6 +280,11 @@ function ContatoDetalhePage() {
                   type="email"
                   placeholder="E-mail"
                   defaultValue={contact.email}
+                />
+                <Input
+                  name="instagram"
+                  placeholder="Instagram (@usuario)"
+                  defaultValue={contact.instagram}
                 />
                 <select name="product" className={fieldClass} defaultValue={contact.product}>
                   {activeProducts.map((p) => (

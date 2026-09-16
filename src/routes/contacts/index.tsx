@@ -88,6 +88,7 @@ function ContatosPage() {
         company: String(d.get("company")),
         phone: String(d.get("phone")),
         email: String(d.get("email")),
+        instagram: String(d.get("instagram")),
         product: String(d.get("product")) as Product,
         source: String(d.get("source")),
         campaign: String(d.get("campaign")),
@@ -133,6 +134,7 @@ function ContatosPage() {
               <CompanyField />
               <Input name="phone" placeholder="WhatsApp *" required />
               <Input name="email" type="email" placeholder="E-mail" />
+              <Input name="instagram" placeholder="Instagram (@usuario)" />
               <select name="product" className={fieldClass}>
                 {activeProducts.map((p) => (
                   <option key={p}>{p}</option>

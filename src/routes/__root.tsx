@@ -4,6 +4,7 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useRouterState,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
@@ -136,12 +137,22 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const isPublicRoute = pathname.startsWith("/register/");
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <AuthenticatedApp />
-      </AuthProvider>
+      {isPublicRoute ? (
+        <>
+          {/* Formulário público de inscrição: fica fora do login de propósito. */}
+          <Outlet />
+          <Toaster richColors position="top-right" />
+        </>
+      ) : (
+        <AuthProvider>
+          <AuthenticatedApp />
+        </AuthProvider>
+      )}
     </QueryClientProvider>
   );
 }

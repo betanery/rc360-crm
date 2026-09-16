@@ -99,6 +99,7 @@ Deno.serve(async (req) => {
         organization_id: profile.organization_id,
         name,
         company: String(row.company || row.empresa || "").trim() || null,
+        instagram: String(row.instagram || "").trim() || null,
         phone,
         email,
         product,

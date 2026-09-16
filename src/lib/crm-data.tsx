@@ -18,6 +18,7 @@ export interface Contact {
   company: string;
   phone: string;
   email: string;
+  instagram: string;
   product: Product;
   source: string;
   campaign: string;
@@ -80,6 +81,7 @@ const demoContacts: Contact[] = [
     owner: "Roberta",
     tags: ["Qualificada"],
     createdAt: iso(-8),
+    instagram: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -98,6 +100,7 @@ const demoContacts: Contact[] = [
     owner: "Cinthia",
     tags: ["Pediu call"],
     createdAt: iso(-4),
+    instagram: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -116,6 +119,7 @@ const demoContacts: Contact[] = [
     owner: "Roberta",
     tags: ["Lead Rotas"],
     createdAt: iso(-2),
+    instagram: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -134,6 +138,7 @@ const demoContacts: Contact[] = [
     owner: "Roberta",
     tags: ["Participou", "Proposta sem retorno"],
     createdAt: iso(-12),
+    instagram: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -152,6 +157,7 @@ const demoContacts: Contact[] = [
     owner: "Cinthia",
     tags: ["Não respondeu"],
     createdAt: iso(-6),
+    instagram: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -265,6 +271,7 @@ type ContactRow = {
   company: string | null;
   phone: string;
   email: string | null;
+  instagram: string | null;
   product: Product;
   source: string | null;
   campaign: string | null;
@@ -292,6 +299,7 @@ function mapContact(row: ContactRow): Contact {
     company: row.company ?? "",
     phone: row.phone,
     email: row.email ?? "",
+    instagram: row.instagram ?? "",
     product: row.product,
     source: row.source ?? "",
     campaign: row.campaign ?? "",
@@ -341,7 +349,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       supabase
         .from("contacts")
         .select(
-          "id,name,company,phone,email,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at,contact_tags(tags(name))",
+          "id,name,company,phone,email,instagram,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at,contact_tags(tags(name))",
         )
         .order("created_at", { ascending: false }),
       supabase.from("opportunities").select("*").order("created_at", { ascending: false }),
@@ -446,6 +454,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             company: contact.company || null,
             phone: contact.phone,
             email: contact.email || null,
+            instagram: contact.instagram || null,
             product: contact.product,
             source: contact.source || null,
             campaign: contact.campaign || null,
@@ -458,7 +467,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             wants_feedback: contact.wantsFeedback || null,
           })
           .select(
-            "id,name,company,phone,email,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at",
+            "id,name,company,phone,email,instagram,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at",
           )
           .single();
         if (insertError) throw insertError;
@@ -488,6 +497,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             company: contact.company || null,
             phone: contact.phone,
             email: contact.email || null,
+            instagram: contact.instagram || null,
             product: contact.product,
             source: contact.source || null,
             campaign: contact.campaign || null,

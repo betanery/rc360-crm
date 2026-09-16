@@ -10,6 +10,7 @@ import {
   Settings,
   ShoppingBag,
   Bot,
+  CalendarDays,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const NAV_ITEMS = [
   { to: "/tasks", label: "Tarefas", icon: CheckSquare },
   { to: "/recovery", label: "Recuperações", icon: RefreshCcw },
   { to: "/products", label: "Produtos", icon: ShoppingBag },
+  { to: "/events", label: "Eventos", icon: CalendarDays },
   { to: "/automations", label: "Automações", icon: Bot },
   { to: "/settings", label: "Configurações", icon: Settings },
 ] as const;

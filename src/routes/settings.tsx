@@ -866,7 +866,7 @@ function ConfiguracoesPage() {
                 <code>campanha</code>, <code>observacoes</code>. Contatos com o mesmo telefone ou
                 e-mail já existente são atualizados, não duplicados. Também aceita, opcionalmente,{" "}
                 <code>tempo_mercado</code>, <code>tamanho_equipe</code>, <code>indicado_por</code>,{" "}
-                <code>maior_dor</code> e <code>quer_devolutiva</code>.
+                <code>maior_dor</code>, <code>quer_devolutiva</code> e <code>instagram</code>.
               </p>
               <Input
                 type="file"

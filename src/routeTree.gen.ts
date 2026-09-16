@@ -22,6 +22,9 @@ import { Route as CompaniesIndexRouteImport } from './routes/companies/index'
 import { Route as CompaniesCompanyIdRouteImport } from './routes/companies/$companyId'
 import { Route as ContactsIndexRouteImport } from './routes/contacts/index'
 import { Route as ContactsContactIdRouteImport } from './routes/contacts/$contactId'
+import { Route as EventsIndexRouteImport } from './routes/events/index'
+import { Route as EventsEventIdRouteImport } from './routes/events/$eventId'
+import { Route as RegisterSlugRouteImport } from './routes/register.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +91,21 @@ const ContactsContactIdRoute = ContactsContactIdRouteImport.update({
   path: '/contacts/$contactId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EventsIndexRoute = EventsIndexRouteImport.update({
+  id: '/events/',
+  path: '/events/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EventsEventIdRoute = EventsEventIdRouteImport.update({
+  id: '/events/$eventId',
+  path: '/events/$eventId',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterSlugRoute = RegisterSlugRouteImport.update({
+  id: '/register/$slug',
+  path: '/register/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -101,8 +119,11 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/companies/$companyId': typeof CompaniesCompanyIdRoute
   '/contacts/$contactId': typeof ContactsContactIdRoute
+  '/events/$eventId': typeof EventsEventIdRoute
+  '/register/$slug': typeof RegisterSlugRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
+  '/events/': typeof EventsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -116,8 +137,11 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/companies/$companyId': typeof CompaniesCompanyIdRoute
   '/contacts/$contactId': typeof ContactsContactIdRoute
+  '/events/$eventId': typeof EventsEventIdRoute
+  '/register/$slug': typeof RegisterSlugRoute
   '/companies': typeof CompaniesIndexRoute
   '/contacts': typeof ContactsIndexRoute
+  '/events': typeof EventsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -132,8 +156,11 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/companies/$companyId': typeof CompaniesCompanyIdRoute
   '/contacts/$contactId': typeof ContactsContactIdRoute
+  '/events/$eventId': typeof EventsEventIdRoute
+  '/register/$slug': typeof RegisterSlugRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
+  '/events/': typeof EventsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,8 +176,11 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/companies/$companyId'
     | '/contacts/$contactId'
+    | '/events/$eventId'
+    | '/register/$slug'
     | '/companies/'
     | '/contacts/'
+    | '/events/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -164,8 +194,11 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/companies/$companyId'
     | '/contacts/$contactId'
+    | '/events/$eventId'
+    | '/register/$slug'
     | '/companies'
     | '/contacts'
+    | '/events'
   id:
     | '__root__'
     | '/'
@@ -179,8 +212,11 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/companies/$companyId'
     | '/contacts/$contactId'
+    | '/events/$eventId'
+    | '/register/$slug'
     | '/companies/'
     | '/contacts/'
+    | '/events/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -195,8 +231,11 @@ export interface RootRouteChildren {
   TasksRoute: typeof TasksRoute
   CompaniesCompanyIdRoute: typeof CompaniesCompanyIdRoute
   ContactsContactIdRoute: typeof ContactsContactIdRoute
+  EventsEventIdRoute: typeof EventsEventIdRoute
+  RegisterSlugRoute: typeof RegisterSlugRoute
   CompaniesIndexRoute: typeof CompaniesIndexRoute
   ContactsIndexRoute: typeof ContactsIndexRoute
+  EventsIndexRoute: typeof EventsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -292,6 +331,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContactsContactIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/events/': {
+      id: '/events/'
+      path: '/events'
+      fullPath: '/events/'
+      preLoaderRoute: typeof EventsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/events/$eventId': {
+      id: '/events/$eventId'
+      path: '/events/$eventId'
+      fullPath: '/events/$eventId'
+      preLoaderRoute: typeof EventsEventIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register/$slug': {
+      id: '/register/$slug'
+      path: '/register/$slug'
+      fullPath: '/register/$slug'
+      preLoaderRoute: typeof RegisterSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -307,8 +367,11 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   CompaniesCompanyIdRoute: CompaniesCompanyIdRoute,
   ContactsContactIdRoute: ContactsContactIdRoute,
+  EventsEventIdRoute: EventsEventIdRoute,
+  RegisterSlugRoute: RegisterSlugRoute,
   CompaniesIndexRoute: CompaniesIndexRoute,
   ContactsIndexRoute: ContactsIndexRoute,
+  EventsIndexRoute: EventsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
