@@ -56,16 +56,8 @@ export function AppSidebar({ open, onClose }: AppSidebarProps) {
       >
         {/* Logo */}
         <div className="flex h-16 items-center justify-between border-b border-sidebar-border px-6">
-          <Link to="/" className="flex items-baseline gap-1" onClick={onClose}>
-            <span
-              className="font-display text-2xl font-semibold tracking-tight text-sidebar-primary-foreground"
-              style={{ color: "var(--sidebar-primary)" }}
-            >
-              RC360
-            </span>
-            <span className="text-xs font-medium uppercase tracking-widest text-sidebar-foreground/70">
-              CRM
-            </span>
+          <Link to="/" className="flex items-center" onClick={onClose}>
+            <img src="/logo-horizontal.png" alt="RC360" className="h-9 w-auto" />
           </Link>
           <button
             onClick={onClose}
