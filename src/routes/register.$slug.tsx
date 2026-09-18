@@ -70,7 +70,7 @@ function RegisterPage() {
 
   if (state === "loading") {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f9f6ed]">
+      <div className="flex min-h-screen items-center justify-center bg-[#F8F6EE]">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -78,7 +78,7 @@ function RegisterPage() {
 
   if (state === "not_found" || !event) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#f9f6ed] px-4">
+      <div className="flex min-h-screen items-center justify-center bg-[#F8F6EE] px-4">
         <div className="max-w-sm text-center">
           <h1 className="text-xl font-semibold">Inscrições encerradas</h1>
           <p className="mt-2 text-sm text-muted-foreground">
@@ -89,10 +89,10 @@ function RegisterPage() {
     );
   }
 
-  const color = event.brand_color || "#132e50";
+  const color = event.brand_color || "#06101D";
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#f9f6ed] px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-[#F8F6EE] px-4 py-10">
       <div className="w-full max-w-md overflow-hidden rounded-2xl border bg-white shadow-sm">
         <div
           className="flex flex-col items-center gap-3 px-8 py-8 text-center"

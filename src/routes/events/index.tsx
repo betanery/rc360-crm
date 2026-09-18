@@ -117,7 +117,7 @@ function EventsPage() {
         product: String(d.get("product")),
         headline: String(d.get("headline") || "").trim() || null,
         subtitle: String(d.get("subtitle") || "").trim() || null,
-        brand_color: String(d.get("brandColor") || "#132e50"),
+        brand_color: String(d.get("brandColor") || "#06101D"),
         logo_url: logoUrl,
         starts_at: startsAtRaw ? new Date(startsAtRaw).toISOString() : null,
         ends_at: endsAtRaw ? new Date(endsAtRaw).toISOString() : null,
@@ -225,7 +225,7 @@ function EventsPage() {
                 <input
                   type="color"
                   name="brandColor"
-                  defaultValue="#132e50"
+                  defaultValue="#06101D"
                   className="h-10 w-14 rounded-md border bg-background"
                 />
                 <label className="ml-4 flex-1 text-xs text-muted-foreground">

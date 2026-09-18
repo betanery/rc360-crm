@@ -4,15 +4,15 @@
 // Cores extraídas de src/styles.css para manter a mesma identidade do app.
 
 const COLORS = {
-  navy: "#132e50",
-  navyText: "#f8f5ee",
-  gold: "#cba553",
-  goldText: "#0e2036",
-  ivory: "#f9f6ed",
-  card: "#fcfaf4",
-  charcoal: "#212730",
-  muted: "#6b7280",
-  border: "#e6e1d6",
+  navy: "#06101D",
+  navyText: "#F8F6EE",
+  gold: "#D4AF37",
+  goldText: "#06101D",
+  ivory: "#F8F6EE",
+  card: "#FCFBF7",
+  charcoal: "#3A3A3A",
+  muted: "#7A7A7A",
+  border: "#E8E4D8",
 };
 
 export interface EmailContent {
@@ -57,7 +57,7 @@ export function renderEmailHtml({ heading, bodyText, ctaLabel, ctaUrl }: EmailCo
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>${escapeHtml(heading)}</title>
   </head>
-  <body style="margin:0;padding:0;background:${COLORS.ivory};font-family:'Work Sans',Arial,Helvetica,sans-serif;">
+  <body style="margin:0;padding:0;background:${COLORS.ivory};font-family:'Montserrat',Arial,Helvetica,sans-serif;">
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COLORS.ivory};padding:32px 16px;">
       <tr>
         <td align="center">
