@@ -15,6 +15,8 @@ import {
 import { shortDate, useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { audienceFiltersFromJson } from "@/components/automations/AudienceFilterPicker";
+import { StartCadenceDialog } from "@/components/automations/StartCadenceDialog";
 
 export const Route = createFileRoute("/automations/")({ component: AutomacoesPage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
@@ -334,6 +336,11 @@ function AutomacoesPage() {
                     <Badge variant={cadence.active ? "default" : "outline"}>
                       {cadence.active ? "Ativa" : "Inativa"}
                     </Badge>
+                    <StartCadenceDialog
+                      cadenceId={cadence.id}
+                      cadenceName={cadence.name}
+                      defaultFilters={audienceFiltersFromJson(cadence.audience_filters)}
+                    />
                     <Button
                       size="sm"
                       variant="outline"
