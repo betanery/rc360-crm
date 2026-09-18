@@ -43,20 +43,46 @@ async function braveSearch(query: string): Promise<Source[]> {
   }));
 }
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 async function summarizeWithOpenAI(prompt: string): Promise<string> {
-  const res = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${OPENAI_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: OPENAI_MODEL,
-      max_tokens: 700,
-      messages: [{ role: "user", content: prompt }],
-    }),
-  });
-  if (!res.ok) throw new Error(`OpenAI request falhou: ${res.status}`);
+  let res: Response | undefined;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    res = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: OPENAI_MODEL,
+        max_tokens: 700,
+        messages: [{ role: "user", content: prompt }],
+      }),
+    });
+    if (res.ok) break;
+    if (res.status !== 429 && res.status < 500) break;
+    if (attempt === 2) break;
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? retryAfter * 1000
+      : 1000 * 2 ** attempt + Math.random() * 300;
+    await sleep(Math.min(waitMs, 8000));
+  }
+
+  if (!res || !res.ok) {
+    const status = res?.status ?? 0;
+    const detail = res ? await res.text().catch(() => "") : "";
+    if (status === 429) {
+      throw new Error(
+        detail.includes("insufficient_quota") || detail.includes("billing")
+          ? "A conta de IA está sem créditos disponíveis. Verifique o saldo/plano da chave OpenAI e tente novamente."
+          : "O serviço de IA atingiu o limite de requisições. Aguarde alguns instantes e tente novamente.",
+      );
+    }
+    throw new Error(`OpenAI request falhou: ${status}`);
+  }
+
   const data = await res.json();
   const text = String(data?.choices?.[0]?.message?.content ?? "").trim();
   if (!text) throw new Error("Resposta vazia do modelo de IA");
