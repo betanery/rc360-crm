@@ -29,7 +29,11 @@ async function braveSearch(query: string): Promise<Source[]> {
   const res = await fetch(url, {
     headers: { Accept: "application/json", "X-Subscription-Token": BRAVE_API_KEY! },
   });
-  if (!res.ok) throw new Error(`Brave search falhou: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const detail = body?.message || body?.error?.message;
+    throw new Error(detail ? `Brave search: ${detail}` : `Brave search falhou: ${res.status}`);
+  }
   const data = await res.json();
   const results = (data?.web?.results ?? []) as Array<{
     title?: string;
@@ -56,7 +60,11 @@ async function summarizeWithOpenAI(prompt: string): Promise<string> {
       messages: [{ role: "user", content: prompt }],
     }),
   });
-  if (!res.ok) throw new Error(`OpenAI request falhou: ${res.status}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => null);
+    const detail = body?.error?.message;
+    throw new Error(detail ? `OpenAI: ${detail}` : `OpenAI request falhou: ${res.status}`);
+  }
   const data = await res.json();
   const text = String(data?.choices?.[0]?.message?.content ?? "").trim();
   if (!text) throw new Error("Resposta vazia do modelo de IA");
@@ -115,7 +123,13 @@ Deno.serve(async (req) => {
 
   let sources: Source[] = [];
   try {
-    const results = await Promise.all(queries.map((q) => braveSearch(q)));
+    const results: Source[][] = [];
+    for (let i = 0; i < queries.length; i++) {
+      results.push(await braveSearch(queries[i]));
+      if (i < queries.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 1100));
+      }
+    }
     const seen = new Set<string>();
     sources = results.flat().filter((s) => {
       if (!s.url || seen.has(s.url)) return false;
