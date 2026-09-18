@@ -4,8 +4,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const BRAVE_API_KEY = Deno.env.get("BRAVE_SEARCH_API_KEY");
-const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-const ANTHROPIC_MODEL = Deno.env.get("ANTHROPIC_MODEL") || "claude-haiku-4-5-20251001";
+const OPENAI_API_KEY = Deno.env.get("OPENAI_API_KEY");
+const OPENAI_MODEL = Deno.env.get("OPENAI_MODEL") || "gpt-4o-mini";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -43,26 +43,22 @@ async function braveSearch(query: string): Promise<Source[]> {
   }));
 }
 
-async function summarizeWithClaude(prompt: string): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+async function summarizeWithOpenAI(prompt: string): Promise<string> {
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
-      "x-api-key": ANTHROPIC_API_KEY!,
-      "anthropic-version": "2023-06-01",
+      Authorization: `Bearer ${OPENAI_API_KEY}`,
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
+      model: OPENAI_MODEL,
       max_tokens: 700,
       messages: [{ role: "user", content: prompt }],
     }),
   });
-  if (!res.ok) throw new Error(`Anthropic request falhou: ${res.status}`);
+  if (!res.ok) throw new Error(`OpenAI request falhou: ${res.status}`);
   const data = await res.json();
-  const text = ((data?.content ?? []) as Array<{ text?: string }>)
-    .map((block) => block.text ?? "")
-    .join("\n")
-    .trim();
+  const text = String(data?.choices?.[0]?.message?.content ?? "").trim();
   if (!text) throw new Error("Resposta vazia do modelo de IA");
   return text;
 }
@@ -71,7 +67,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
   if (!BRAVE_API_KEY) return json({ error: "BRAVE_SEARCH_API_KEY não configurada" }, 500);
-  if (!ANTHROPIC_API_KEY) return json({ error: "ANTHROPIC_API_KEY não configurada" }, 500);
+  if (!OPENAI_API_KEY) return json({ error: "OPENAI_API_KEY não configurada" }, 500);
 
   const authorization = req.headers.get("authorization");
   if (!authorization) return json({ error: "unauthorized" }, 401);
@@ -163,7 +159,7 @@ Escreva, em português, um resumo curto (até 200 palavras) focado em prospecç�
 
   let summary: string;
   try {
-    summary = await summarizeWithClaude(prompt);
+    summary = await summarizeWithOpenAI(prompt);
   } catch (error) {
     return json({ error: error instanceof Error ? error.message : "Falha ao gerar o resumo" }, 502);
   }
@@ -175,7 +171,7 @@ Escreva, em português, um resumo curto (até 200 palavras) focado em prospecç�
       contact_id: contactId,
       summary,
       sources,
-      model: ANTHROPIC_MODEL,
+      model: OPENAI_MODEL,
       created_by: userData.user.id,
     })
     .select("id,summary,sources,created_at")
