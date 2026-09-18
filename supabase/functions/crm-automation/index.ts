@@ -68,6 +68,16 @@ Deno.serve(async (req) => {
   }
 
   const db = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+  // Matricula contatos inativos em cadências do tipo "inactivity_days" antes
+  // de processar a fila — não é um evento, então precisa ser verificado
+  // periodicamente, e reaproveita esta mesma invocação em vez de um cron novo.
+  try {
+    await db.rpc("run_inactivity_cadence_scan");
+  } catch (scanError) {
+    console.error("run_inactivity_cadence_scan failed", scanError);
+  }
+
   const { data: queue, error } = await db
     .from("automation_queue")
     .select("*, contacts(id,name,email,phone,whatsapp_opt_in,email_opt_in)")

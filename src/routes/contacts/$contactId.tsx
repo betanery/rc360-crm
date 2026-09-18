@@ -6,11 +6,13 @@ import {
   Linkedin,
   Loader2,
   Mail,
+  Music2,
   Pencil,
   Phone,
   Plus,
   Save,
   Search,
+  Sparkles,
   Tag,
   Trash2,
 } from "lucide-react";
@@ -47,6 +49,28 @@ export const Route = createFileRoute("/contacts/$contactId")({ component: Contat
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
 const TASK_TYPES: Task["type"][] = ["Call", "Ligação", "WhatsApp", "E-mail", "Follow-up"];
 
+interface LeadResearch {
+  id: string;
+  summary: string;
+  sources: { title: string; url: string; snippet: string }[];
+  created_at: string;
+}
+
+async function extractFunctionErrorMessage(error: unknown, fallback: string): Promise<string> {
+  if (error && typeof error === "object" && "context" in error) {
+    const context = (error as { context: unknown }).context;
+    if (context instanceof Response) {
+      try {
+        const body = await context.clone().json();
+        if (body?.error) return String(body.error);
+      } catch {
+        // corpo não era JSON legível, usa a mensagem genérica abaixo
+      }
+    }
+  }
+  return error instanceof Error ? error.message : fallback;
+}
+
 function ContatoDetalhePage() {
   const { contactId } = Route.useParams();
   const navigate = useNavigate();
@@ -60,6 +84,9 @@ function ContatoDetalhePage() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [taskOpen, setTaskOpen] = useState(false);
+  const [research, setResearch] = useState<LeadResearch | null>(null);
+  const [researchLoading, setResearchLoading] = useState(false);
+  const [sourcesOpen, setSourcesOpen] = useState(false);
 
   useEffect(() => {
     if (!supabase) return;
@@ -78,6 +105,20 @@ function ContatoDetalhePage() {
         if (!error && data) setCompanies(data as { id: string; name: string }[]);
       });
   }, []);
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase
+      .from("lead_ai_research")
+      .select("id,summary,sources,created_at")
+      .eq("contact_id", contactId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!error && data) setResearch(data as LeadResearch);
+      });
+  }, [contactId]);
 
   if (!contact) {
     return (
@@ -106,6 +147,7 @@ function ContatoDetalhePage() {
         phone: String(d.get("phone")),
         email: String(d.get("email")),
         instagram: String(d.get("instagram")),
+        tiktok: String(d.get("tiktok")),
         product: String(d.get("product")) as Product,
         source: String(d.get("source")),
         campaign: String(d.get("campaign")),
@@ -138,6 +180,25 @@ function ContatoDetalhePage() {
     }
   }
 
+  async function generateResearch() {
+    if (!supabase) return;
+    setResearchLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("crm-lead-research", {
+        body: { contactId },
+      });
+      if (error)
+        throw new Error(await extractFunctionErrorMessage(error, "Falha ao gerar o resumo."));
+      if (data?.error) throw new Error(data.error);
+      setResearch(data.research as LeadResearch);
+      toast.success("Resumo gerado.");
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Não foi possível gerar o resumo.");
+    } finally {
+      setResearchLoading(false);
+    }
+  }
+
   async function saveNotes() {
     try {
       await updateContact(contactId, {
@@ -146,6 +207,7 @@ function ContatoDetalhePage() {
         phone: contact!.phone,
         email: contact!.email,
         instagram: contact!.instagram,
+        tiktok: contact!.tiktok,
         product: contact!.product,
         source: contact!.source,
         campaign: contact!.campaign,
@@ -222,6 +284,11 @@ function ContatoDetalhePage() {
                 <Instagram className="h-3.5 w-3.5" /> {contact.instagram}
               </span>
             )}
+            {contact.tiktok && (
+              <span className="flex items-center gap-1">
+                <Music2 className="h-3.5 w-3.5" /> {contact.tiktok}
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -257,6 +324,19 @@ function ContatoDetalhePage() {
               <Instagram className="h-3.5 w-3.5" /> Instagram
             </a>
           </Button>
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={
+                contact.tiktok
+                  ? `https://www.tiktok.com/@${contact.tiktok.replace(/^@/, "")}`
+                  : `https://www.tiktok.com/search?q=${searchTerm}`
+              }
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Music2 className="h-3.5 w-3.5" /> TikTok
+            </a>
+          </Button>
           <Dialog open={open} onOpenChange={setOpen}>
             <Button variant="outline" size="sm" onClick={() => setOpen(true)}>
               <Pencil className="h-3.5 w-3.5" /> Editar
@@ -285,6 +365,11 @@ function ContatoDetalhePage() {
                   name="instagram"
                   placeholder="Instagram (@usuario)"
                   defaultValue={contact.instagram}
+                />
+                <Input
+                  name="tiktok"
+                  placeholder="TikTok (@usuario)"
+                  defaultValue={contact.tiktok}
                 />
                 <select name="product" className={fieldClass} defaultValue={contact.product}>
                   {activeProducts.map((p) => (
@@ -472,6 +557,73 @@ function ContatoDetalhePage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4" /> Resumo de prospecção (IA)
+          </CardTitle>
+          {supabase && (
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={researchLoading}
+              onClick={() => void generateResearch()}
+            >
+              {researchLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Sparkles className="h-3.5 w-3.5" />
+              )}
+              {research ? "Gerar novamente" : "Gerar resumo"}
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {research ? (
+            <>
+              <p className="whitespace-pre-line text-sm text-muted-foreground">
+                {research.summary}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Gerado em {shortDate(research.created_at)}
+              </p>
+              {research.sources.length > 0 && (
+                <div>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-primary hover:underline"
+                    onClick={() => setSourcesOpen((v) => !v)}
+                  >
+                    {sourcesOpen ? "Ocultar fontes" : `Ver fontes (${research.sources.length})`}
+                  </button>
+                  {sourcesOpen && (
+                    <ul className="mt-2 space-y-1">
+                      {research.sources.map((s) => (
+                        <li key={s.url} className="text-xs">
+                          <a
+                            href={s.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="text-primary hover:underline"
+                          >
+                            {s.title || s.url}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Ainda não foi gerado nenhum resumo. Clique em "Gerar resumo" para buscar informações
+              públicas (Google, Instagram, TikTok) e montar uma leitura rápida para prospecção.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>

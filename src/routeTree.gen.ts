@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AutomationsRouteImport } from './routes/automations'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as OpportunitiesRouteImport } from './routes/opportunities'
 import { Route as PipelineRouteImport } from './routes/pipeline'
@@ -18,6 +17,7 @@ import { Route as ProductsRouteImport } from './routes/products'
 import { Route as RecoveryRouteImport } from './routes/recovery'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as AutomationsIndexRouteImport } from './routes/automations/index'
 import { Route as CompaniesIndexRouteImport } from './routes/companies/index'
 import { Route as CompaniesCompanyIdRouteImport } from './routes/companies/$companyId'
 import { Route as ContactsIndexRouteImport } from './routes/contacts/index'
@@ -25,15 +25,12 @@ import { Route as ContactsContactIdRouteImport } from './routes/contacts/$contac
 import { Route as EventsIndexRouteImport } from './routes/events/index'
 import { Route as EventsEventIdRouteImport } from './routes/events/$eventId'
 import { Route as RegisterSlugRouteImport } from './routes/register.$slug'
+import { Route as AutomationsCadencesCadenceIdRouteImport } from './routes/automations/cadences/$cadenceId'
+import { Route as AutomationsCadencesNewRouteImport } from './routes/automations/cadences/new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AutomationsRoute = AutomationsRouteImport.update({
-  id: '/automations',
-  path: '/automations',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -71,6 +68,11 @@ const TasksRoute = TasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AutomationsIndexRoute = AutomationsIndexRouteImport.update({
+  id: '/automations/',
+  path: '/automations/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CompaniesIndexRoute = CompaniesIndexRouteImport.update({
   id: '/companies/',
   path: '/companies/',
@@ -106,10 +108,20 @@ const RegisterSlugRoute = RegisterSlugRouteImport.update({
   path: '/register/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AutomationsCadencesCadenceIdRoute =
+  AutomationsCadencesCadenceIdRouteImport.update({
+    id: '/automations/cadences/$cadenceId',
+    path: '/automations/cadences/$cadenceId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AutomationsCadencesNewRoute = AutomationsCadencesNewRouteImport.update({
+  id: '/automations/cadences/new',
+  path: '/automations/cadences/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/automations': typeof AutomationsRoute
   '/dashboard': typeof DashboardRoute
   '/opportunities': typeof OpportunitiesRoute
   '/pipeline': typeof PipelineRoute
@@ -121,13 +133,15 @@ export interface FileRoutesByFullPath {
   '/contacts/$contactId': typeof ContactsContactIdRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/register/$slug': typeof RegisterSlugRoute
+  '/automations/': typeof AutomationsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
   '/events/': typeof EventsIndexRoute
+  '/automations/cadences/$cadenceId': typeof AutomationsCadencesCadenceIdRoute
+  '/automations/cadences/new': typeof AutomationsCadencesNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/automations': typeof AutomationsRoute
   '/dashboard': typeof DashboardRoute
   '/opportunities': typeof OpportunitiesRoute
   '/pipeline': typeof PipelineRoute
@@ -139,14 +153,16 @@ export interface FileRoutesByTo {
   '/contacts/$contactId': typeof ContactsContactIdRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/register/$slug': typeof RegisterSlugRoute
+  '/automations': typeof AutomationsIndexRoute
   '/companies': typeof CompaniesIndexRoute
   '/contacts': typeof ContactsIndexRoute
   '/events': typeof EventsIndexRoute
+  '/automations/cadences/$cadenceId': typeof AutomationsCadencesCadenceIdRoute
+  '/automations/cadences/new': typeof AutomationsCadencesNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/automations': typeof AutomationsRoute
   '/dashboard': typeof DashboardRoute
   '/opportunities': typeof OpportunitiesRoute
   '/pipeline': typeof PipelineRoute
@@ -158,15 +174,17 @@ export interface FileRoutesById {
   '/contacts/$contactId': typeof ContactsContactIdRoute
   '/events/$eventId': typeof EventsEventIdRoute
   '/register/$slug': typeof RegisterSlugRoute
+  '/automations/': typeof AutomationsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
   '/contacts/': typeof ContactsIndexRoute
   '/events/': typeof EventsIndexRoute
+  '/automations/cadences/$cadenceId': typeof AutomationsCadencesCadenceIdRoute
+  '/automations/cadences/new': typeof AutomationsCadencesNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/automations'
     | '/dashboard'
     | '/opportunities'
     | '/pipeline'
@@ -178,13 +196,15 @@ export interface FileRouteTypes {
     | '/contacts/$contactId'
     | '/events/$eventId'
     | '/register/$slug'
+    | '/automations/'
     | '/companies/'
     | '/contacts/'
     | '/events/'
+    | '/automations/cadences/$cadenceId'
+    | '/automations/cadences/new'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/automations'
     | '/dashboard'
     | '/opportunities'
     | '/pipeline'
@@ -196,13 +216,15 @@ export interface FileRouteTypes {
     | '/contacts/$contactId'
     | '/events/$eventId'
     | '/register/$slug'
+    | '/automations'
     | '/companies'
     | '/contacts'
     | '/events'
+    | '/automations/cadences/$cadenceId'
+    | '/automations/cadences/new'
   id:
     | '__root__'
     | '/'
-    | '/automations'
     | '/dashboard'
     | '/opportunities'
     | '/pipeline'
@@ -214,14 +236,16 @@ export interface FileRouteTypes {
     | '/contacts/$contactId'
     | '/events/$eventId'
     | '/register/$slug'
+    | '/automations/'
     | '/companies/'
     | '/contacts/'
     | '/events/'
+    | '/automations/cadences/$cadenceId'
+    | '/automations/cadences/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AutomationsRoute: typeof AutomationsRoute
   DashboardRoute: typeof DashboardRoute
   OpportunitiesRoute: typeof OpportunitiesRoute
   PipelineRoute: typeof PipelineRoute
@@ -233,9 +257,12 @@ export interface RootRouteChildren {
   ContactsContactIdRoute: typeof ContactsContactIdRoute
   EventsEventIdRoute: typeof EventsEventIdRoute
   RegisterSlugRoute: typeof RegisterSlugRoute
+  AutomationsIndexRoute: typeof AutomationsIndexRoute
   CompaniesIndexRoute: typeof CompaniesIndexRoute
   ContactsIndexRoute: typeof ContactsIndexRoute
   EventsIndexRoute: typeof EventsIndexRoute
+  AutomationsCadencesCadenceIdRoute: typeof AutomationsCadencesCadenceIdRoute
+  AutomationsCadencesNewRoute: typeof AutomationsCadencesNewRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -245,13 +272,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/automations': {
-      id: '/automations'
-      path: '/automations'
-      fullPath: '/automations'
-      preLoaderRoute: typeof AutomationsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -303,6 +323,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/automations/': {
+      id: '/automations/'
+      path: '/automations'
+      fullPath: '/automations/'
+      preLoaderRoute: typeof AutomationsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/companies/': {
       id: '/companies/'
       path: '/companies'
@@ -352,12 +379,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/automations/cadences/$cadenceId': {
+      id: '/automations/cadences/$cadenceId'
+      path: '/automations/cadences/$cadenceId'
+      fullPath: '/automations/cadences/$cadenceId'
+      preLoaderRoute: typeof AutomationsCadencesCadenceIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/automations/cadences/new': {
+      id: '/automations/cadences/new'
+      path: '/automations/cadences/new'
+      fullPath: '/automations/cadences/new'
+      preLoaderRoute: typeof AutomationsCadencesNewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AutomationsRoute: AutomationsRoute,
   DashboardRoute: DashboardRoute,
   OpportunitiesRoute: OpportunitiesRoute,
   PipelineRoute: PipelineRoute,
@@ -369,9 +409,12 @@ const rootRouteChildren: RootRouteChildren = {
   ContactsContactIdRoute: ContactsContactIdRoute,
   EventsEventIdRoute: EventsEventIdRoute,
   RegisterSlugRoute: RegisterSlugRoute,
+  AutomationsIndexRoute: AutomationsIndexRoute,
   CompaniesIndexRoute: CompaniesIndexRoute,
   ContactsIndexRoute: ContactsIndexRoute,
   EventsIndexRoute: EventsIndexRoute,
+  AutomationsCadencesCadenceIdRoute: AutomationsCadencesCadenceIdRoute,
+  AutomationsCadencesNewRoute: AutomationsCadencesNewRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

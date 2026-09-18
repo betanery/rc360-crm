@@ -100,6 +100,7 @@ Deno.serve(async (req) => {
         name,
         company: String(row.company || row.empresa || "").trim() || null,
         instagram: String(row.instagram || "").trim() || null,
+        tiktok: String(row.tiktok || "").trim() || null,
         phone,
         email,
         product,
