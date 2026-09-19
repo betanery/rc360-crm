@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { stages as staticStages } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import {
   AudienceFilterPicker,
@@ -330,7 +331,7 @@ export function CadenceBuilder({ cadenceId }: { cadenceId?: string }) {
                 onChange={(e) => updateStep(index, { timeOfDay: e.target.value })}
               />
               <select
-                className={`${fieldClass} w-auto`}
+                className={cn(fieldClass, "w-auto")}
                 value={step.channel}
                 onChange={(e) =>
                   updateStep(index, { channel: e.target.value as "whatsapp" | "email" })

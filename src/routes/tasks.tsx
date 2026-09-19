@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { shortDate, useCRM, type Task } from "@/lib/crm-data";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/tasks")({ component: TarefasPage });
@@ -64,7 +65,7 @@ function TarefasPage() {
         </div>
         <div className="flex items-center gap-3">
           <select
-            className={`${fieldClass} w-auto min-w-40`}
+            className={cn(fieldClass, "w-auto min-w-40")}
             value={status}
             onChange={(e) => setStatus(e.target.value as typeof ALL | Task["status"])}
             aria-label="Filtro por status"

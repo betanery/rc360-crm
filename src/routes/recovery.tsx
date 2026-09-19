@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { money, shortDate, useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/recovery")({ component: RecuperacoesPage });
@@ -95,7 +96,7 @@ function RecuperacoesPage() {
           </p>
         </div>
         <select
-          className={`${fieldClass} w-auto min-w-48`}
+          className={cn(fieldClass, "w-auto min-w-48")}
           value={minDays}
           onChange={(e) => setMinDays(Number(e.target.value))}
           aria-label="Filtro por dias parado"

@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { money, products as staticProducts, shortDate, useCRM } from "@/lib/crm-data";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -140,7 +141,7 @@ function OportunidadesPage() {
 
       <div className="flex flex-wrap gap-3">
         <select
-          className={`${fieldClass} w-auto min-w-40`}
+          className={cn(fieldClass, "w-auto min-w-40")}
           value={product}
           onChange={(e) => setProduct(e.target.value)}
           aria-label="Filtro por funil"
@@ -153,7 +154,7 @@ function OportunidadesPage() {
           ))}
         </select>
         <select
-          className={`${fieldClass} w-auto min-w-40`}
+          className={cn(fieldClass, "w-auto min-w-40")}
           value={status}
           onChange={(e) => setStatus(e.target.value as typeof ALL | StatusFilter)}
           aria-label="Filtro por status"

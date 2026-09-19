@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { products as staticProducts, useCRM, type Product } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
+import { cn } from "@/lib/utils";
 import { CompanyField } from "@/components/contacts/CompanyField";
 import { CampaignField } from "@/components/contacts/CampaignField";
 import { SourceField } from "@/components/contacts/SourceField";
@@ -187,7 +188,7 @@ function ContatosPage() {
           />
         </div>
         <select
-          className={`${fieldClass} w-auto min-w-40`}
+          className={cn(fieldClass, "w-auto min-w-40")}
           value={origin}
           onChange={(e) => setOrigin(e.target.value)}
           aria-label="Filtro por origem"
@@ -200,7 +201,7 @@ function ContatosPage() {
           ))}
         </select>
         <select
-          className={`${fieldClass} w-auto min-w-40`}
+          className={cn(fieldClass, "w-auto min-w-40")}
           value={tag}
           onChange={(e) => setTag(e.target.value)}
           aria-label="Filtro por tag"
@@ -213,7 +214,7 @@ function ContatosPage() {
           ))}
         </select>
         <select
-          className={`${fieldClass} w-auto min-w-40`}
+          className={cn(fieldClass, "w-auto min-w-40")}
           value={mainPain}
           onChange={(e) => setMainPain(e.target.value)}
           aria-label="Filtro por maior dor"
@@ -226,7 +227,7 @@ function ContatosPage() {
           ))}
         </select>
         <select
-          className={`${fieldClass} w-auto min-w-40`}
+          className={cn(fieldClass, "w-auto min-w-40")}
           value={wantsFeedback}
           onChange={(e) => setWantsFeedback(e.target.value)}
           aria-label="Filtro por interesse em devolutiva"

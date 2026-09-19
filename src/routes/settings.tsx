@@ -11,7 +11,6 @@ import {
   Mail,
   Plus,
   Save,
-  ShoppingBag,
   ShoppingCart,
   Tags,
   Trash2,
@@ -33,7 +32,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { products } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { QualificationOptionsManager } from "@/components/contacts/QualificationOptionsManager";
 import { toast } from "sonner";
@@ -522,22 +520,6 @@ function ConfiguracoesPage() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <ShoppingBag className="h-5 w-5" />
-              Produtos
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="flex flex-wrap gap-2">
-            {products.map((p) => (
-              <Badge key={p} variant="secondary" className="px-3 py-1">
-                {p}
-              </Badge>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
               <Tags className="h-5 w-5" />
               Tags
             </CardTitle>
@@ -866,7 +848,8 @@ function ConfiguracoesPage() {
                 <code>campanha</code>, <code>observacoes</code>. Contatos com o mesmo telefone ou
                 e-mail já existente são atualizados, não duplicados. Também aceita, opcionalmente,{" "}
                 <code>tempo_mercado</code>, <code>tamanho_equipe</code>, <code>indicado_por</code>,{" "}
-                <code>maior_dor</code>, <code>quer_devolutiva</code> e <code>instagram</code>.
+                <code>maior_dor</code>, <code>quer_devolutiva</code>, <code>instagram</code> e{" "}
+                <code>tiktok</code>.
               </p>
               <Input
                 type="file"
