@@ -16,12 +16,25 @@ interface PublicEvent {
 type LoadState = "loading" | "ready" | "not_found";
 type SubmitState = "idle" | "submitting" | "done" | "error";
 
+function formatPhone(raw: string) {
+  const digits = raw.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+}
+
+function formatEmail(raw: string) {
+  return raw.replace(/\s/g, "").toLowerCase();
+}
+
 function RegisterPage() {
   const { slug } = Route.useParams();
   const [state, setState] = useState<LoadState>("loading");
   const [event, setEvent] = useState<PublicEvent | null>(null);
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitError, setSubmitError] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
 
   useEffect(() => {
     if (!supabaseFunctionsUrl) {
@@ -128,6 +141,9 @@ function RegisterPage() {
                 name="phone"
                 placeholder="WhatsApp *"
                 required
+                inputMode="tel"
+                value={phone}
+                onChange={(e) => setPhone(formatPhone(e.target.value))}
                 className="h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-2"
                 style={{ ["--tw-ring-color" as string]: color }}
               />
@@ -135,6 +151,8 @@ function RegisterPage() {
                 name="email"
                 type="email"
                 placeholder="E-mail"
+                value={email}
+                onChange={(e) => setEmail(formatEmail(e.target.value))}
                 className="h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-2"
                 style={{ ["--tw-ring-color" as string]: color }}
               />
