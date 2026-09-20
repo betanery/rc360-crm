@@ -1,0 +1,33 @@
+name: Run RC360 CRM Automation
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  tick:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger crm-automation
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CRON_SECRET:-}" ]; then
+            echo "Missing required GitHub secret: CRON_SECRET"
+            exit 1
+          fi
+          status=$(curl -sS -o /tmp/response.json -w "%{http_code}" \
+            -X POST "https://vvmsikxxoamwqjuihtjk.supabase.co/functions/v1/crm-automation" \
+            -H "x-cron-secret: ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "HTTP status: $status"
+          cat /tmp/response.json
+          echo
+          if [ "$status" -ge 300 ]; then
+            exit 1
+          fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
