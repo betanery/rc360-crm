@@ -202,10 +202,11 @@ function EventDetailPage() {
               ))}
             </select>
             <Input name="headline" placeholder="Título" defaultValue={event.headline ?? ""} />
-            <Input
+            <textarea
               name="subtitle"
               placeholder="Subtítulo/descrição"
               defaultValue={event.subtitle ?? ""}
+              className="min-h-20 rounded-md border bg-background p-3 text-sm"
             />
             <div className="flex items-center gap-2">
               <label className="text-xs text-muted-foreground">Cor</label>

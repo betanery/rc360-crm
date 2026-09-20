@@ -219,7 +219,11 @@ function EventsPage() {
                 ))}
               </select>
               <Input name="headline" placeholder="Título (aparece no formulário)" />
-              <Input name="subtitle" placeholder="Subtítulo/descrição" />
+              <textarea
+                name="subtitle"
+                placeholder="Subtítulo/descrição"
+                className="min-h-20 rounded-md border bg-background p-3 text-sm"
+              />
               <div className="flex items-center gap-2">
                 <label className="text-xs text-muted-foreground">Cor</label>
                 <input

@@ -102,7 +102,9 @@ function RegisterPage() {
             <img src={event.logo_url} alt={event.name} className="h-14 w-auto object-contain" />
           )}
           <h1 className="text-xl font-semibold text-white">{event.headline || event.name}</h1>
-          {event.subtitle && <p className="text-sm text-white/80">{event.subtitle}</p>}
+          {event.subtitle && (
+            <p className="whitespace-pre-line text-sm text-white/80">{event.subtitle}</p>
+          )}
         </div>
 
         <div className="p-8">
