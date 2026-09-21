@@ -1,8 +1,19 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Bot, Pause, Play, Plus, Repeat, Rocket } from "lucide-react";
+import {
+  Bot,
+  ChevronDown,
+  ChevronUp,
+  Pause,
+  Play,
+  Plus,
+  Repeat,
+  Rocket,
+  Search,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
@@ -58,6 +69,8 @@ const triggerLabel: Record<string, string> = {
   inactivity_days: "Inatividade",
 };
 
+type StatusFilter = "active" | "sent" | "all";
+
 function AutomacoesPage() {
   const { contacts } = useCRM();
   const [rows, setRows] = useState<AutomationRow[]>([]);
@@ -65,6 +78,9 @@ function AutomacoesPage() {
   const [open, setOpen] = useState(false);
   const [cadences, setCadences] = useState<CadenceRow[]>([]);
   const [cadencesLoading, setCadencesLoading] = useState(Boolean(supabase));
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("active");
+  const [search, setSearch] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
 
   async function load() {
     if (!supabase) return;
@@ -74,8 +90,8 @@ function AutomacoesPage() {
       .select(
         "id,contact_id,channel,automation_type,message,status,scheduled_at,created_at,metadata",
       )
-      .order("created_at", { ascending: false })
-      .limit(100);
+      .order("scheduled_at", { ascending: true })
+      .limit(1000);
     if (error) toast.error(error.message);
     else setRows((data ?? []) as AutomationRow[]);
     setLoading(false);
@@ -113,6 +129,70 @@ function AutomacoesPage() {
 
   const contactName = useMemo(() => new Map(contacts.map((c) => [c.id, c.name])), [contacts]);
   const cadenceName = useMemo(() => new Map(cadences.map((c) => [c.id, c.name])), [cadences]);
+
+  const filteredRows = useMemo(
+    () =>
+      rows
+        .filter((r) => {
+          if (statusFilter === "active") return r.status !== "sent";
+          if (statusFilter === "sent") return r.status === "sent";
+          return true;
+        })
+        .filter((r) => {
+          if (!search.trim()) return true;
+          const name = contactName.get(r.contact_id) ?? "";
+          return name.toLowerCase().includes(search.trim().toLowerCase());
+        }),
+    [rows, statusFilter, search, contactName],
+  );
+
+  const groups = useMemo(() => {
+    const byContact = new Map<string, AutomationRow[]>();
+    for (const row of filteredRows) {
+      const list = byContact.get(row.contact_id) ?? [];
+      list.push(row);
+      byContact.set(row.contact_id, list);
+    }
+    return Array.from(byContact.entries())
+      .map(([contactId, items]) => {
+        const pending = items.filter((i) => i.status === "pending" || i.status === "processing");
+        const nextScheduled = pending.length
+          ? pending.reduce(
+              (min, i) => (new Date(i.scheduled_at) < new Date(min) ? i.scheduled_at : min),
+              pending[0]!.scheduled_at,
+            )
+          : null;
+        return {
+          contactId,
+          items: [...items].sort((a, b) => +new Date(a.scheduled_at) - +new Date(b.scheduled_at)),
+          counts: {
+            total: items.length,
+            pending: items.filter((i) => i.status === "pending").length,
+            sent: items.filter((i) => i.status === "sent").length,
+            blocked: items.filter((i) => i.status === "blocked").length,
+            failed: items.filter((i) => i.status === "failed").length,
+          },
+          nextScheduled,
+        };
+      })
+      .sort((a, b) => {
+        if (a.nextScheduled && b.nextScheduled) {
+          return +new Date(a.nextScheduled) - +new Date(b.nextScheduled);
+        }
+        if (a.nextScheduled) return -1;
+        if (b.nextScheduled) return 1;
+        return 0;
+      });
+  }, [filteredRows]);
+
+  function toggleExpanded(contactId: string) {
+    setExpanded((current) => {
+      const next = new Set(current);
+      if (next.has(contactId)) next.delete(contactId);
+      else next.add(contactId);
+      return next;
+    });
+  }
 
   async function createAutomation(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -230,68 +310,142 @@ function AutomacoesPage() {
             </p>
           )}
 
+          <div className="flex flex-wrap gap-3">
+            <div className="relative max-w-xs flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                className="pl-9"
+                placeholder="Buscar por contato"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+            <select
+              className={`${fieldClass} w-auto min-w-48`}
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
+              aria-label="Filtro por status"
+            >
+              <option value="active">Pendentes e com problema</option>
+              <option value="sent">Enviadas</option>
+              <option value="all">Todas</option>
+            </select>
+          </div>
+
           <div className="space-y-3">
             {loading ? (
               <p className="text-sm text-muted-foreground">Carregando automações…</p>
-            ) : rows.length ? (
-              rows.map((row) => (
-                <div
-                  key={row.id}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-card p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
-                      <Bot className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="font-medium">
-                        {contactName.get(row.contact_id) ?? "Contato"} ·{" "}
-                        {row.channel === "whatsapp" ? "WhatsApp" : "E-mail"}
-                        {row.metadata?.cadence_id && cadenceName.get(row.metadata.cadence_id) && (
-                          <Badge variant="outline" className="ml-2 align-middle">
-                            <Repeat className="mr-1 h-3 w-3" />
-                            {cadenceName.get(row.metadata.cadence_id)}
-                          </Badge>
-                        )}
-                      </p>
-                      <p className="max-w-md text-sm text-muted-foreground">{row.message}</p>
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        Agendado para {shortDate(row.scheduled_at)}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Badge
-                      variant={
-                        row.status === "sent"
-                          ? "default"
-                          : row.status === "failed"
-                            ? "destructive"
-                            : row.status === "blocked"
-                              ? "outline"
-                              : "secondary"
-                      }
+            ) : groups.length ? (
+              groups.map((group) => {
+                const isExpanded = expanded.has(group.contactId);
+                const summary = [
+                  group.counts.pending ? `${group.counts.pending} agendada(s)` : null,
+                  group.counts.sent ? `${group.counts.sent} enviada(s)` : null,
+                  group.counts.blocked ? `${group.counts.blocked} pausada(s)` : null,
+                  group.counts.failed ? `${group.counts.failed} falhou/falharam` : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+                return (
+                  <div key={group.contactId} className="rounded-xl border bg-card">
+                    <button
+                      type="button"
+                      onClick={() => toggleExpanded(group.contactId)}
+                      className="flex w-full flex-wrap items-center justify-between gap-4 p-4 text-left"
                     >
-                      {statusLabel[row.status]}
-                    </Badge>
-                    {(row.status === "pending" || row.status === "blocked") && (
-                      <Button size="sm" variant="outline" onClick={() => void toggleStatus(row)}>
-                        {row.status === "blocked" ? (
-                          <>
-                            <Play className="h-3.5 w-3.5" /> Ativar
-                          </>
-                        ) : (
-                          <>
-                            <Pause className="h-3.5 w-3.5" /> Desativar
-                          </>
+                      <div className="flex items-start gap-3">
+                        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
+                          <Bot className="h-5 w-5" />
+                        </div>
+                        <div>
+                          <p className="font-medium">
+                            {contactName.get(group.contactId) ?? "Contato"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {group.counts.total} mensagem(ns)
+                            {summary ? ` · ${summary}` : ""}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {group.nextScheduled && (
+                          <span className="text-xs text-muted-foreground">
+                            Próxima: {shortDate(group.nextScheduled)}
+                          </span>
                         )}
-                      </Button>
+                        {isExpanded ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="space-y-2 border-t p-3">
+                        {group.items.map((row) => (
+                          <div
+                            key={row.id}
+                            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background p-3"
+                          >
+                            <div>
+                              <p className="text-sm font-medium">
+                                {row.channel === "whatsapp" ? "WhatsApp" : "E-mail"}
+                                {row.metadata?.cadence_id &&
+                                  cadenceName.get(row.metadata.cadence_id) && (
+                                    <Badge variant="outline" className="ml-2 align-middle">
+                                      <Repeat className="mr-1 h-3 w-3" />
+                                      {cadenceName.get(row.metadata.cadence_id)}
+                                    </Badge>
+                                  )}
+                              </p>
+                              <p className="max-w-md text-sm text-muted-foreground">
+                                {row.message}
+                              </p>
+                              <p className="mt-1 text-xs text-muted-foreground">
+                                Agendado para {shortDate(row.scheduled_at)}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Badge
+                                variant={
+                                  row.status === "sent"
+                                    ? "default"
+                                    : row.status === "failed"
+                                      ? "destructive"
+                                      : row.status === "blocked"
+                                        ? "outline"
+                                        : "secondary"
+                                }
+                              >
+                                {statusLabel[row.status]}
+                              </Badge>
+                              {(row.status === "pending" || row.status === "blocked") && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => void toggleStatus(row)}
+                                >
+                                  {row.status === "blocked" ? (
+                                    <>
+                                      <Play className="h-3.5 w-3.5" /> Ativar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Pause className="h-3.5 w-3.5" /> Desativar
+                                    </>
+                                  )}
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
-                </div>
-              ))
+                );
+              })
             ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma automação programada ainda.</p>
+              <p className="text-sm text-muted-foreground">Nenhuma automação neste filtro.</p>
             )}
           </div>
         </TabsContent>
