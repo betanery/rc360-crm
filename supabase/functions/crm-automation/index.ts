@@ -59,7 +59,11 @@ async function sendEmail(
       ...(RESEND_REPLY_TO ? { reply_to: RESEND_REPLY_TO } : {}),
     }),
   });
-  if (!sent.ok) throw new Error(`Resend request failed: ${sent.status}`);
+  if (!sent.ok) {
+    const body = await sent.json().catch(() => null);
+    const detail = body?.message || body?.error?.message;
+    throw new Error(detail ? `Resend: ${detail}` : `Resend request failed: ${sent.status}`);
+  }
 }
 
 Deno.serve(async (req) => {
