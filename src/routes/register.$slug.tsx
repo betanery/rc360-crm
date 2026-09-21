@@ -11,6 +11,8 @@ interface PublicEvent {
   subtitle: string | null;
   brand_color: string;
   logo_url: string | null;
+  group_url: string | null;
+  group_cta: string | null;
 }
 
 type LoadState = "loading" | "ready" | "not_found";
@@ -25,6 +27,14 @@ function formatPhone(raw: string) {
 
 function formatEmail(raw: string) {
   return raw.replace(/\s/g, "").toLowerCase();
+}
+
+function formatCpf(raw: string) {
+  const d = raw.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
 function RegisterPage() {
