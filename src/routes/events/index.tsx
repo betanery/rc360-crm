@@ -127,6 +127,8 @@ function EventsPage() {
         reminder_message: String(d.get("reminderMessage") || "").trim() || null,
         closing_message: String(d.get("closingMessage") || "").trim() || null,
         followup_message: String(d.get("followupMessage") || "").trim() || null,
+        group_url: String(d.get("groupUrl") || "").trim() || null,
+        group_cta: String(d.get("groupCta") || "").trim() || null,
       });
       if (error) throw error;
       setOpen(false);
@@ -248,6 +250,15 @@ function EventsPage() {
                 </label>
               </div>
               <Input name="reminderDays" placeholder="Lembrar quantos dias antes (ex: 3,1)" />
+              <Input
+                name="groupUrl"
+                type="url"
+                placeholder="Link do grupo (ex: https://chat.whatsapp.com/...)"
+              />
+              <Input
+                name="groupCta"
+                placeholder="Texto do botão do grupo (padrão: Entrar no grupo do evento)"
+              />
               <select name="channel" className={fieldClass} defaultValue="whatsapp">
                 <option value="whatsapp">Só WhatsApp</option>
                 <option value="email">Só e-mail</option>
