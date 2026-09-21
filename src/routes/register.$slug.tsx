@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { supabaseFunctionsUrl, supabaseAnonKeyValue } from "@/lib/supabase";
+import { formatCpf } from "@/lib/utils";
 
 export const Route = createFileRoute("/register/$slug")({ component: RegisterPage });
 
@@ -35,6 +36,7 @@ function RegisterPage() {
   const [submitError, setSubmitError] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
 
   useEffect(() => {
     if (!supabaseFunctionsUrl) {
@@ -70,6 +72,7 @@ function RegisterPage() {
           name: String(d.get("name")),
           phone: String(d.get("phone")),
           email: String(d.get("email")),
+          cpf: String(d.get("cpf")),
         }),
       });
       const data = await res.json();
@@ -153,6 +156,15 @@ function RegisterPage() {
                 placeholder="E-mail"
                 value={email}
                 onChange={(e) => setEmail(formatEmail(e.target.value))}
+                className="h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-2"
+                style={{ ["--tw-ring-color" as string]: color }}
+              />
+              <input
+                name="cpf"
+                placeholder="CPF"
+                inputMode="numeric"
+                value={cpf}
+                onChange={(e) => setCpf(formatCpf(e.target.value))}
                 className="h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-2"
                 style={{ ["--tw-ring-color" as string]: color }}
               />

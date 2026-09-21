@@ -91,6 +91,7 @@ function ContatosPage() {
         email: String(d.get("email")),
         instagram: String(d.get("instagram")),
         tiktok: String(d.get("tiktok")),
+        cpf: String(d.get("cpf")),
         product: String(d.get("product")) as Product,
         source: String(d.get("source")),
         campaign: String(d.get("campaign")),
@@ -138,6 +139,7 @@ function ContatosPage() {
               <Input name="email" type="email" placeholder="E-mail" />
               <Input name="instagram" placeholder="Instagram (@usuario)" />
               <Input name="tiktok" placeholder="TikTok (@usuario)" />
+              <Input name="cpf" placeholder="CPF" />
               <select name="product" className={fieldClass}>
                 {activeProducts.map((p) => (
                   <option key={p}>{p}</option>

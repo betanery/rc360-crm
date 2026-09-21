@@ -101,6 +101,7 @@ Deno.serve(async (req) => {
         company: String(row.company || row.empresa || "").trim() || null,
         instagram: String(row.instagram || "").trim() || null,
         tiktok: String(row.tiktok || "").trim() || null,
+        cpf: String(row.cpf || "").trim() || null,
         phone,
         email,
         product,

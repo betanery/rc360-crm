@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
     name?: string;
     phone?: string;
     email?: string;
+    cpf?: string;
   } | null;
   const slug = String(body?.slug || "").trim();
   const name = String(body?.name || "").trim();
@@ -62,6 +63,8 @@ Deno.serve(async (req) => {
     .trim()
     .toLowerCase();
   const email = emailRaw.includes("@") ? emailRaw : null;
+  const cpfDigits = String(body?.cpf || "").replace(/\D/g, "");
+  const cpf = cpfDigits || null;
 
   if (!slug) return json({ error: "slug_required" }, 400);
   if (!name || !phone) return json({ error: "nome_e_whatsapp_sao_obrigatorios" }, 400);
@@ -103,6 +106,7 @@ Deno.serve(async (req) => {
     name,
     phone,
     email,
+    cpf,
     product: event.product,
     source: "Formulário",
     campaign: event.name,

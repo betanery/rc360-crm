@@ -20,6 +20,7 @@ export interface Contact {
   email: string;
   instagram: string;
   tiktok: string;
+  cpf: string;
   product: Product;
   source: string;
   campaign: string;
@@ -84,6 +85,7 @@ const demoContacts: Contact[] = [
     createdAt: iso(-8),
     instagram: "",
     tiktok: "",
+    cpf: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -104,6 +106,7 @@ const demoContacts: Contact[] = [
     createdAt: iso(-4),
     instagram: "",
     tiktok: "",
+    cpf: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -124,6 +127,7 @@ const demoContacts: Contact[] = [
     createdAt: iso(-2),
     instagram: "",
     tiktok: "",
+    cpf: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -144,6 +148,7 @@ const demoContacts: Contact[] = [
     createdAt: iso(-12),
     instagram: "",
     tiktok: "",
+    cpf: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -164,6 +169,7 @@ const demoContacts: Contact[] = [
     createdAt: iso(-6),
     instagram: "",
     tiktok: "",
+    cpf: "",
     marketTime: "",
     teamSize: "",
     referredBy: "",
@@ -279,6 +285,7 @@ type ContactRow = {
   email: string | null;
   instagram: string | null;
   tiktok: string | null;
+  cpf: string | null;
   product: Product;
   source: string | null;
   campaign: string | null;
@@ -308,6 +315,7 @@ function mapContact(row: ContactRow): Contact {
     email: row.email ?? "",
     instagram: row.instagram ?? "",
     tiktok: row.tiktok ?? "",
+    cpf: row.cpf ?? "",
     product: row.product,
     source: row.source ?? "",
     campaign: row.campaign ?? "",
@@ -357,7 +365,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       supabase
         .from("contacts")
         .select(
-          "id,name,company,phone,email,instagram,tiktok,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at,contact_tags(tags(name))",
+          "id,name,company,phone,email,instagram,tiktok,cpf,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at,contact_tags(tags(name))",
         )
         .order("created_at", { ascending: false }),
       supabase.from("opportunities").select("*").order("created_at", { ascending: false }),
@@ -464,6 +472,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             email: contact.email || null,
             instagram: contact.instagram || null,
             tiktok: contact.tiktok || null,
+            cpf: contact.cpf || null,
             product: contact.product,
             source: contact.source || null,
             campaign: contact.campaign || null,
@@ -476,7 +485,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             wants_feedback: contact.wantsFeedback || null,
           })
           .select(
-            "id,name,company,phone,email,instagram,tiktok,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at",
+            "id,name,company,phone,email,instagram,tiktok,cpf,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at",
           )
           .single();
         if (insertError) throw insertError;
@@ -508,6 +517,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             email: contact.email || null,
             instagram: contact.instagram || null,
             tiktok: contact.tiktok || null,
+            cpf: contact.cpf || null,
             product: contact.product,
             source: contact.source || null,
             campaign: contact.campaign || null,

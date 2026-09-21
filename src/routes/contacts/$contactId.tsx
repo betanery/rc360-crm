@@ -148,6 +148,7 @@ function ContatoDetalhePage() {
         email: String(d.get("email")),
         instagram: String(d.get("instagram")),
         tiktok: String(d.get("tiktok")),
+        cpf: String(d.get("cpf")),
         product: String(d.get("product")) as Product,
         source: String(d.get("source")),
         campaign: String(d.get("campaign")),
@@ -208,6 +209,7 @@ function ContatoDetalhePage() {
         email: contact!.email,
         instagram: contact!.instagram,
         tiktok: contact!.tiktok,
+        cpf: contact!.cpf,
         product: contact!.product,
         source: contact!.source,
         campaign: contact!.campaign,
@@ -371,6 +373,7 @@ function ContatoDetalhePage() {
                   placeholder="TikTok (@usuario)"
                   defaultValue={contact.tiktok}
                 />
+                <Input name="cpf" placeholder="CPF" defaultValue={contact.cpf} />
                 <select name="product" className={fieldClass} defaultValue={contact.product}>
                   {activeProducts.map((p) => (
                     <option key={p}>{p}</option>
