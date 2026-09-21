@@ -29,6 +29,8 @@ interface EventRow {
   reminder_message: string | null;
   closing_message: string | null;
   followup_message: string | null;
+  group_url: string | null;
+  group_cta: string | null;
   active: boolean;
 }
 
@@ -132,6 +134,8 @@ function EventDetailPage() {
           reminder_message: String(d.get("reminderMessage") || "").trim() || null,
           closing_message: String(d.get("closingMessage") || "").trim() || null,
           followup_message: String(d.get("followupMessage") || "").trim() || null,
+          group_url: String(d.get("groupUrl") || "").trim() || null,
+          group_cta: String(d.get("groupCta") || "").trim() || null,
           active: d.get("active") === "on",
         })
         .eq("id", event.id);
@@ -248,6 +252,17 @@ function EventDetailPage() {
               name="reminderDays"
               placeholder="Lembrar quantos dias antes (ex: 3,1)"
               defaultValue={(event.reminder_days ?? []).join(",")}
+            />
+            <Input
+              name="groupUrl"
+              type="url"
+              placeholder="Link do grupo (ex: https://chat.whatsapp.com/...)"
+              defaultValue={event.group_url ?? ""}
+            />
+            <Input
+              name="groupCta"
+              placeholder="Texto do botão do grupo (padrão: Entrar no grupo do evento)"
+              defaultValue={event.group_cta ?? ""}
             />
             <select name="channel" className={fieldClass} defaultValue={event.channel}>
               <option value="whatsapp">Só WhatsApp</option>

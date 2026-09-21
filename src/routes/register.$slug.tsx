@@ -2,7 +2,6 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { supabaseFunctionsUrl, supabaseAnonKeyValue } from "@/lib/supabase";
-import { formatCpf } from "@/lib/utils";
 
 export const Route = createFileRoute("/register/$slug")({ component: RegisterPage });
 
@@ -12,6 +11,8 @@ interface PublicEvent {
   subtitle: string | null;
   brand_color: string;
   logo_url: string | null;
+  group_url: string | null;
+  group_cta: string | null;
 }
 
 type LoadState = "loading" | "ready" | "not_found";
@@ -28,6 +29,14 @@ function formatEmail(raw: string) {
   return raw.replace(/\s/g, "").toLowerCase();
 }
 
+function formatCpf(raw: string) {
+  const d = raw.replace(/\D/g, "").slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
 function RegisterPage() {
   const { slug } = Route.useParams();
   const [state, setState] = useState<LoadState>("loading");
@@ -37,6 +46,8 @@ function RegisterPage() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [cpf, setCpf] = useState("");
+  const [groupUrl, setGroupUrl] = useState<string | null>(null);
+  const [groupCta, setGroupCta] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabaseFunctionsUrl) {
@@ -77,6 +88,8 @@ function RegisterPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "Não foi possível confirmar.");
+      setGroupUrl(data.group_url ?? null);
+      setGroupCta(data.group_cta ?? null);
       setSubmitState("done");
     } catch (reason) {
       setSubmitState("error");
@@ -130,6 +143,23 @@ function RegisterPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Você vai receber os próximos passos por WhatsApp/e-mail.
               </p>
+              {(groupUrl || event.group_url) && (
+                <a
+                  href={(groupUrl || event.group_url) as string}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-5 flex h-11 w-full items-center justify-center rounded-md text-sm font-medium text-white"
+                  style={{ backgroundColor: color }}
+                >
+                  {groupCta || event.group_cta || "Entrar no grupo do evento"}
+                </a>
+              )}
+              {(groupUrl || event.group_url) && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Clique aqui para entrar no grupo e receber todas as atualizações e novidades do
+                  evento.
+                </p>
+              )}
             </div>
           ) : (
             <form onSubmit={submit} className="grid gap-3">
@@ -151,20 +181,21 @@ function RegisterPage() {
                 style={{ ["--tw-ring-color" as string]: color }}
               />
               <input
+                name="cpf"
+                placeholder="CPF *"
+                required
+                inputMode="numeric"
+                value={cpf}
+                onChange={(e) => setCpf(formatCpf(e.target.value))}
+                className="h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-2"
+                style={{ ["--tw-ring-color" as string]: color }}
+              />
+              <input
                 name="email"
                 type="email"
                 placeholder="E-mail"
                 value={email}
                 onChange={(e) => setEmail(formatEmail(e.target.value))}
-                className="h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-2"
-                style={{ ["--tw-ring-color" as string]: color }}
-              />
-              <input
-                name="cpf"
-                placeholder="CPF"
-                inputMode="numeric"
-                value={cpf}
-                onChange={(e) => setCpf(formatCpf(e.target.value))}
                 className="h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-2"
                 style={{ ["--tw-ring-color" as string]: color }}
               />
