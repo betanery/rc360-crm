@@ -45,6 +45,9 @@ function RegisterPage() {
   const [submitError, setSubmitError] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
+  const [cpf, setCpf] = useState("");
+  const [groupUrl, setGroupUrl] = useState<string | null>(null);
+  const [groupCta, setGroupCta] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabaseFunctionsUrl) {
@@ -80,10 +83,13 @@ function RegisterPage() {
           name: String(d.get("name")),
           phone: String(d.get("phone")),
           email: String(d.get("email")),
+          cpf: String(d.get("cpf")),
         }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "Não foi possível confirmar.");
+      setGroupUrl(data.group_url ?? null);
+      setGroupCta(data.group_cta ?? null);
       setSubmitState("done");
     } catch (reason) {
       setSubmitState("error");
