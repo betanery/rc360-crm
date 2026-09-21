@@ -143,6 +143,23 @@ function RegisterPage() {
               <p className="mt-2 text-sm text-muted-foreground">
                 Você vai receber os próximos passos por WhatsApp/e-mail.
               </p>
+              {(groupUrl || event.group_url) && (
+                <a
+                  href={(groupUrl || event.group_url) as string}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-5 flex h-11 w-full items-center justify-center rounded-md text-sm font-medium text-white"
+                  style={{ backgroundColor: color }}
+                >
+                  {groupCta || event.group_cta || "Entrar no grupo do evento"}
+                </a>
+              )}
+              {(groupUrl || event.group_url) && (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Clique aqui para entrar no grupo e receber todas as atualizações e novidades do
+                  evento.
+                </p>
+              )}
             </div>
           ) : (
             <form onSubmit={submit} className="grid gap-3">
@@ -160,6 +177,16 @@ function RegisterPage() {
                 inputMode="tel"
                 value={phone}
                 onChange={(e) => setPhone(formatPhone(e.target.value))}
+                className="h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-2"
+                style={{ ["--tw-ring-color" as string]: color }}
+              />
+              <input
+                name="cpf"
+                placeholder="CPF *"
+                required
+                inputMode="numeric"
+                value={cpf}
+                onChange={(e) => setCpf(formatCpf(e.target.value))}
                 className="h-11 w-full rounded-md border px-3 text-sm outline-none focus:ring-2"
                 style={{ ["--tw-ring-color" as string]: color }}
               />
