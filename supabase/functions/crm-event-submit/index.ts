@@ -42,6 +42,8 @@ interface EventRow {
   reminder_message: string | null;
   closing_message: string | null;
   followup_message: string | null;
+  group_url: string | null;
+  group_cta: string | null;
   active: boolean;
 }
 
@@ -54,6 +56,7 @@ Deno.serve(async (req) => {
     name?: string;
     phone?: string;
     email?: string;
+    cpf?: string;
   } | null;
   const slug = String(body?.slug || "").trim();
   const name = String(body?.name || "").trim();
@@ -62,6 +65,8 @@ Deno.serve(async (req) => {
     .trim()
     .toLowerCase();
   const email = emailRaw.includes("@") ? emailRaw : null;
+  const cpfDigits = String(body?.cpf || "").replace(/\D/g, "");
+  const cpf = cpfDigits.length === 11 ? cpfDigits : null;
 
   if (!slug) return json({ error: "slug_required" }, 400);
   if (!name || !phone) return json({ error: "nome_e_whatsapp_sao_obrigatorios" }, 400);
@@ -71,7 +76,7 @@ Deno.serve(async (req) => {
   const { data: event, error: eventError } = await db
     .from("events")
     .select(
-      "id,organization_id,name,product,starts_at,ends_at,reminder_days,channel,welcome_message,reminder_message,closing_message,followup_message,active",
+      "id,organization_id,name,product,starts_at,ends_at,reminder_days,channel,welcome_message,reminder_message,closing_message,followup_message,group_url,group_cta,active",
     )
     .eq("slug", slug)
     .maybeSingle<EventRow>();
@@ -103,6 +108,7 @@ Deno.serve(async (req) => {
     name,
     phone,
     email,
+    ...(cpf ? { cpf } : {}),
     product: event.product,
     source: "Formulário",
     campaign: event.name,
@@ -177,5 +183,10 @@ Deno.serve(async (req) => {
     }
   }
 
-  return json({ ok: true, contact_id: contactId });
+  return json({
+    ok: true,
+    contact_id: contactId,
+    group_url: event.group_url,
+    group_cta: event.group_cta,
+  });
 });
