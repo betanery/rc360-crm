@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
   const db = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
   const { data: event, error } = await db
     .from("events")
-    .select("name,headline,subtitle,brand_color,logo_url,active")
+    .select("name,headline,subtitle,brand_color,logo_url,group_url,group_cta,active")
     .eq("slug", slug)
     .maybeSingle();
 
