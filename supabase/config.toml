@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.crm-inbound]
 verify_jwt = false
 
+[functions.crm-whatsapp-webhook]
+verify_jwt = false
+
 [functions.crm-import]
 verify_jwt = true
 

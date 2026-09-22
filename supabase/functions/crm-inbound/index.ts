@@ -114,12 +114,14 @@ Deno.serve(async (req) => {
 
   const isNewLead = !found;
   const isMessagingChannel = ["whatsapp", "instagram"].includes(provider);
-  const optIn =
-    isMessagingChannel && phone
-      ? { whatsapp_opt_in: true, opt_in_at: new Date().toISOString(), opt_in_source: provider }
-      : email
-        ? { email_opt_in: true, opt_in_at: new Date().toISOString(), opt_in_source: provider }
-        : {};
+  // Não concede opt-in de WhatsApp automaticamente a partir de um lead de
+  // webhook (ex: anúncio/Instagram) — o evento não prova que a pessoa
+  // consentiu em receber mensagens, só e-mail é concedido automaticamente
+  // aqui. WhatsApp precisa de confirmação por outro canal antes de entrar
+  // na fila (o gate em enqueue_automation já bloqueia sem opt-in).
+  const optIn = email
+    ? { email_opt_in: true, opt_in_at: new Date().toISOString(), opt_in_source: provider }
+    : {};
 
   let contact = found;
   if (!contact) {

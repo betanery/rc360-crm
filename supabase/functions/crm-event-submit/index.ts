@@ -136,6 +136,15 @@ Deno.serve(async (req) => {
       { onConflict: "organization_id,name", ignoreDuplicates: true },
     );
 
+  const { data: existingQueueItem } = await db
+    .from("automation_queue")
+    .select("id")
+    .eq("contact_id", contactId)
+    .eq("metadata->>event_id", event.id)
+    .limit(1)
+    .maybeSingle();
+  const alreadyEnqueued = Boolean(existingQueueItem);
+
   const channels =
     event.channel === "both" ? (["whatsapp", "email"] as const) : ([event.channel] as const);
   const now = new Date();
@@ -166,20 +175,25 @@ Deno.serve(async (req) => {
   // função roda com a service role, sem auth.uid(), e a RPC exige
   // is_org_member(auth.uid()) — que só existe pra chamadas de usuário
   // logado. O opt-in já foi garantido acima ao criar/atualizar o contato.
-  for (const step of steps) {
-    if (!step.message?.trim() || !step.scheduledAt) continue;
-    const message = fillTemplate(step.message, name, event.name);
-    for (const channel of channels) {
-      await db.from("automation_queue").insert({
-        organization_id: event.organization_id,
-        contact_id: contactId,
-        channel,
-        automation_type: `event_${step.type}`,
-        subject: channel === "email" ? event.name : null,
-        message,
-        scheduled_at: step.scheduledAt.toISOString(),
-        status: "pending",
-      });
+  // `alreadyEnqueued` evita duplicar a cadência inteira quando o mesmo
+  // contato reenvia o formulário (reload, link reaberto, etc.).
+  if (!alreadyEnqueued) {
+    for (const step of steps) {
+      if (!step.message?.trim() || !step.scheduledAt) continue;
+      const message = fillTemplate(step.message, name, event.name);
+      for (const channel of channels) {
+        await db.from("automation_queue").insert({
+          organization_id: event.organization_id,
+          contact_id: contactId,
+          channel,
+          automation_type: `event_${step.type}`,
+          subject: channel === "email" ? event.name : null,
+          message,
+          scheduled_at: step.scheduledAt.toISOString(),
+          status: "pending",
+          metadata: { event_id: event.id },
+        });
+      }
     }
   }
 
