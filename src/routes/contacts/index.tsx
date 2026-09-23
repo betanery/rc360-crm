@@ -182,6 +182,10 @@ function ContatosPage() {
             Todos os leads, clientes e participantes em um só lugar.
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={exportToExcel}>
+          <Download /> Exportar para Excel
+        </Button>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
