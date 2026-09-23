@@ -245,6 +245,7 @@ function ContatosPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
       <div className="flex flex-wrap gap-3">
         <div className="relative max-w-md flex-1">
