@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, Plus, Search, Tag } from "lucide-react";
+import { ChevronRight, Download, Plus, Search, Tag } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -109,6 +109,69 @@ function ContatosPage() {
       toast.error(reason instanceof Error ? reason.message : "Não foi possível salvar o contato.");
     }
   }
+
+  function exportToExcel() {
+    if (!filtered.length) {
+      toast.error("Nenhum contato para exportar com os filtros atuais.");
+      return;
+    }
+    const headers = [
+      "Nome",
+      "Empresa",
+      "WhatsApp",
+      "E-mail",
+      "CPF",
+      "Instagram",
+      "TikTok",
+      "Produto",
+      "Origem",
+      "Campanha",
+      "Responsável",
+      "Tags",
+      "Tempo de mercado",
+      "Tamanho da equipe",
+      "Indicado por",
+      "Maior dor",
+      "Quer devolutiva",
+      "Observações",
+      "Criado em",
+    ];
+    const cell = (value: unknown) => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const rows = filtered.map((c) =>
+      [
+        c.name,
+        c.company,
+        c.phone,
+        c.email,
+        c.cpf,
+        c.instagram,
+        c.tiktok,
+        c.product,
+        c.source,
+        c.campaign,
+        c.owner,
+        c.tags.join(", "),
+        c.marketTime,
+        c.teamSize,
+        c.referredBy,
+        c.mainPain,
+        c.wantsFeedback,
+        c.notes ?? "",
+        c.createdAt ? new Date(c.createdAt).toLocaleDateString("pt-BR") : "",
+      ]
+        .map(cell)
+        .join(";"),
+    );
+    const csv = `\uFEFF${[headers.map(cell).join(";"), ...rows].join("\r\n")}`;
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `contatos-rc360-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${filtered.length} contato(s) exportado(s).`);
+  }
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -119,6 +182,10 @@ function ContatosPage() {
             Todos os leads, clientes e participantes em um só lugar.
           </p>
         </div>
+        <div className="flex flex-wrap gap-2">
+        <Button variant="outline" onClick={exportToExcel}>
+          <Download /> Exportar para Excel
+        </Button>
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -178,6 +245,7 @@ function ContatosPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
       <div className="flex flex-wrap gap-3">
         <div className="relative max-w-md flex-1">
