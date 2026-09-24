@@ -95,6 +95,10 @@ function ContatosPage() {
   );
 
   function exportCsv() {
+    if (!filtered.length) {
+      toast.error("Nenhum contato para exportar com os filtros atuais.");
+      return;
+    }
     const rows = filtered.map((c) => ({
       nome: c.name,
       empresa: c.company,
@@ -116,7 +120,7 @@ function ContatosPage() {
       observacoes: c.notes ?? "",
       data_cadastro: c.createdAt,
     }));
-    const csv = Papa.unparse(rows);
+    const csv = "﻿" + Papa.unparse(rows);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
@@ -124,6 +128,7 @@ function ContatosPage() {
     link.download = `contatos-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
+    toast.success(`${filtered.length} contato(s) exportado(s).`);
   }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -155,6 +160,7 @@ function ContatosPage() {
       toast.error(reason instanceof Error ? reason.message : "Não foi possível salvar o contato.");
     }
   }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-4">
