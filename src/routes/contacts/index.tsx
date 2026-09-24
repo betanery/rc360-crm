@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, Plus, Search, Tag } from "lucide-react";
+import { ChevronRight, Download, Plus, Search, Tag } from "lucide-react";
+import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ function ContatosPage() {
   const { contacts, addContact } = useCRM();
   const [query, setQuery] = useState("");
   const [origin, setOrigin] = useState(ALL);
+  const [campaign, setCampaign] = useState(ALL);
   const [tag, setTag] = useState(ALL);
   const [mainPain, setMainPain] = useState(ALL);
   const [wantsFeedback, setWantsFeedback] = useState(ALL);
@@ -52,6 +54,10 @@ function ContatosPage() {
     () => Array.from(new Set(contacts.map((c) => c.source).filter(Boolean))).sort(),
     [contacts],
   );
+  const campaigns = useMemo(
+    () => Array.from(new Set(contacts.map((c) => c.campaign).filter(Boolean))).sort(),
+    [contacts],
+  );
   const tags = useMemo(
     () => Array.from(new Set(contacts.flatMap((c) => c.tags))).sort(),
     [contacts],
@@ -72,13 +78,53 @@ function ContatosPage() {
           .toLowerCase()
           .includes(query.toLowerCase());
         const matchesOrigin = origin === ALL || c.source === origin;
+        const matchesCampaign = campaign === ALL || c.campaign === campaign;
         const matchesTag = tag === ALL || c.tags.includes(tag);
         const matchesMainPain = mainPain === ALL || c.mainPain === mainPain;
         const matchesFeedback = wantsFeedback === ALL || c.wantsFeedback === wantsFeedback;
-        return matchesQuery && matchesOrigin && matchesTag && matchesMainPain && matchesFeedback;
+        return (
+          matchesQuery &&
+          matchesOrigin &&
+          matchesCampaign &&
+          matchesTag &&
+          matchesMainPain &&
+          matchesFeedback
+        );
       }),
-    [contacts, query, origin, tag, mainPain, wantsFeedback],
+    [contacts, query, origin, campaign, tag, mainPain, wantsFeedback],
   );
+
+  function exportCsv() {
+    const rows = filtered.map((c) => ({
+      nome: c.name,
+      empresa: c.company,
+      telefone: c.phone,
+      email: c.email,
+      instagram: c.instagram,
+      tiktok: c.tiktok,
+      cpf: c.cpf,
+      produto: c.product,
+      origem: c.source,
+      campanha: c.campaign,
+      responsavel: c.owner,
+      tags: c.tags.join("; "),
+      tempo_mercado: c.marketTime,
+      tamanho_equipe: c.teamSize,
+      indicado_por: c.referredBy,
+      maior_dor: c.mainPain,
+      quer_devolutiva: c.wantsFeedback,
+      observacoes: c.notes ?? "",
+      data_cadastro: c.createdAt,
+    }));
+    const csv = Papa.unparse(rows);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `contatos-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -119,65 +165,70 @@ function ContatosPage() {
             Todos os leads, clientes e participantes em um só lugar.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus /> Novo contato
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Novo contato</DialogTitle>
-              <DialogDescription>
-                Registre somente os dados necessários para iniciar.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
-              <Input name="name" placeholder="Nome *" required />
-              <CompanyField />
-              <Input name="phone" placeholder="WhatsApp *" required />
-              <Input name="email" type="email" placeholder="E-mail" />
-              <Input name="instagram" placeholder="Instagram (@usuario)" />
-              <Input name="tiktok" placeholder="TikTok (@usuario)" />
-              <Input name="cpf" placeholder="CPF" />
-              <select name="product" className={fieldClass}>
-                {activeProducts.map((p) => (
-                  <option key={p}>{p}</option>
-                ))}
-              </select>
-              <SourceField />
-              <CampaignField />
-              <OwnerField defaultValue="Roberta" />
-              <QualificationField
-                field="market_time"
-                name="marketTime"
-                placeholder="Tempo de mercado"
-              />
-              <QualificationField
-                field="team_size"
-                name="teamSize"
-                placeholder="Tamanho da equipe"
-              />
-              <QualificationField
-                field="referred_by"
-                name="referredBy"
-                placeholder="Indicado por"
-              />
-              <QualificationField field="main_pain" name="mainPain" placeholder="Maior dor" />
-              <QualificationField
-                field="wants_feedback"
-                name="wantsFeedback"
-                placeholder="Quer devolutiva?"
-              />
-              <textarea
-                name="notes"
-                placeholder="Observações"
-                className="min-h-20 rounded-md border bg-background p-3 text-sm sm:col-span-2"
-              />
-              <Button className="sm:col-span-2">Salvar contato</Button>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" onClick={exportCsv} disabled={!filtered.length}>
+            <Download /> Exportar ({filtered.length})
+          </Button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus /> Novo contato
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Novo contato</DialogTitle>
+                <DialogDescription>
+                  Registre somente os dados necessários para iniciar.
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
+                <Input name="name" placeholder="Nome *" required />
+                <CompanyField />
+                <Input name="phone" placeholder="WhatsApp *" required />
+                <Input name="email" type="email" placeholder="E-mail" />
+                <Input name="instagram" placeholder="Instagram (@usuario)" />
+                <Input name="tiktok" placeholder="TikTok (@usuario)" />
+                <Input name="cpf" placeholder="CPF" />
+                <select name="product" className={fieldClass}>
+                  {activeProducts.map((p) => (
+                    <option key={p}>{p}</option>
+                  ))}
+                </select>
+                <SourceField />
+                <CampaignField />
+                <OwnerField defaultValue="Roberta" />
+                <QualificationField
+                  field="market_time"
+                  name="marketTime"
+                  placeholder="Tempo de mercado"
+                />
+                <QualificationField
+                  field="team_size"
+                  name="teamSize"
+                  placeholder="Tamanho da equipe"
+                />
+                <QualificationField
+                  field="referred_by"
+                  name="referredBy"
+                  placeholder="Indicado por"
+                />
+                <QualificationField field="main_pain" name="mainPain" placeholder="Maior dor" />
+                <QualificationField
+                  field="wants_feedback"
+                  name="wantsFeedback"
+                  placeholder="Quer devolutiva?"
+                />
+                <textarea
+                  name="notes"
+                  placeholder="Observações"
+                  className="min-h-20 rounded-md border bg-background p-3 text-sm sm:col-span-2"
+                />
+                <Button className="sm:col-span-2">Salvar contato</Button>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
       <div className="flex flex-wrap gap-3">
         <div className="relative max-w-md flex-1">
@@ -199,6 +250,19 @@ function ContatosPage() {
           {origins.map((o) => (
             <option key={o} value={o}>
               {o}
+            </option>
+          ))}
+        </select>
+        <select
+          className={cn(fieldClass, "w-auto min-w-40")}
+          value={campaign}
+          onChange={(e) => setCampaign(e.target.value)}
+          aria-label="Filtro por campanha"
+        >
+          <option value={ALL}>Todas as campanhas</option>
+          {campaigns.map((c) => (
+            <option key={c} value={c}>
+              {c}
             </option>
           ))}
         </select>
