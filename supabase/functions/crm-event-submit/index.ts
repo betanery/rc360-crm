@@ -136,6 +136,16 @@ Deno.serve(async (req) => {
       { onConflict: "organization_id,name", ignoreDuplicates: true },
     );
 
+  // Vínculo estruturado contato↔evento pra lista de inscritos/presença.
+  // ignoreDuplicates preserva registered_at/attended se a pessoa reenviar
+  // o formulário (não reseta presença já marcada).
+  await db
+    .from("event_registrations")
+    .upsert(
+      { organization_id: event.organization_id, event_id: event.id, contact_id: contactId },
+      { onConflict: "event_id,contact_id", ignoreDuplicates: true },
+    );
+
   const { data: existingQueueItem } = await db
     .from("automation_queue")
     .select("id")

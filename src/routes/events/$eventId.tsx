@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { products as staticProducts, useCRM } from "@/lib/crm-data";
+import { Switch } from "@/components/ui/switch";
+import { products as staticProducts } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -41,10 +42,22 @@ function toLocalInput(value: string | null) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+interface Registration {
+  id: string;
+  attended: boolean;
+  attended_at: string | null;
+  registered_at: string;
+  contacts: { id: string; name: string; phone: string; email: string | null } | null;
+}
+
+function toLocalDateTime(value: string) {
+  return new Date(value).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
 function EventDetailPage() {
   const { eventId } = Route.useParams();
-  const { contacts } = useCRM();
   const [event, setEvent] = useState<EventRow | null>(null);
+  const [registrations, setRegistrations] = useState<Registration[] | null>(null);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeProducts, setActiveProducts] = useState<string[]>(staticProducts);
@@ -59,8 +72,45 @@ function EventDetailPage() {
     setEvent(data as EventRow);
   }
 
+  async function loadRegistrations() {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("event_registrations")
+      .select("id,attended,attended_at,registered_at,contacts(id,name,phone,email)")
+      .eq("event_id", eventId)
+      .order("registered_at", { ascending: false });
+    if (error) {
+      toast.error(error.message);
+      setRegistrations([]);
+      return;
+    }
+    setRegistrations(data as unknown as Registration[]);
+  }
+
+  async function toggleAttended(registrationId: string, attended: boolean) {
+    if (!supabase) return;
+    const attendedAt = attended ? new Date().toISOString() : null;
+    setRegistrations(
+      (prev) =>
+        prev?.map((r) =>
+          r.id === registrationId ? { ...r, attended, attended_at: attendedAt } : r,
+        ) ?? null,
+    );
+    const { error } = await supabase
+      .from("event_registrations")
+      .update({ attended, attended_at: attendedAt })
+      .eq("id", registrationId);
+    if (error) {
+      toast.error(error.message);
+      void loadRegistrations();
+      return;
+    }
+    toast.success(attended ? "Presença confirmada." : "Presença desmarcada.");
+  }
+
   useEffect(() => {
     void load();
+    void loadRegistrations();
     if (!supabase) return;
     supabase
       .from("products")
@@ -85,7 +135,7 @@ function EventDetailPage() {
 
   const publicUrl = `${window.location.origin}/register/${event.slug}`;
   const embedSnippet = `<iframe src="${publicUrl}" style="width:100%;max-width:480px;height:640px;border:0" title="${event.name}"></iframe>`;
-  const registrations = contacts.filter((c) => c.campaign === event.name).length;
+  const attendedCount = registrations?.filter((r) => r.attended).length ?? 0;
 
   async function copyEmbed() {
     await navigator.clipboard.writeText(embedSnippet);
@@ -187,7 +237,57 @@ function EventDetailPage() {
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground">{registrations} inscrito(s) até agora.</p>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Inscritos</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {registrations === null ? (
+            <p className="text-sm text-muted-foreground">Carregando inscritos…</p>
+          ) : registrations.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhuma inscrição ainda.</p>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                {registrations.length} inscrito(s) · {attendedCount} compareceu(ram)
+              </p>
+              <div className="overflow-hidden rounded-xl border">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-muted/60 text-left text-xs uppercase tracking-wide text-muted-foreground">
+                      <tr>
+                        <th className="p-4">Nome</th>
+                        <th className="p-4">Telefone</th>
+                        <th className="p-4">Inscrito em</th>
+                        <th className="p-4">Compareceu</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {registrations.map((r) => (
+                        <tr key={r.id} className="border-t hover:bg-muted/30">
+                          <td className="p-4 font-medium">{r.contacts?.name ?? "—"}</td>
+                          <td className="p-4">{r.contacts?.phone ?? "—"}</td>
+                          <td className="p-4 text-muted-foreground">
+                            {toLocalDateTime(r.registered_at)}
+                          </td>
+                          <td className="p-4">
+                            <Switch
+                              checked={r.attended}
+                              onCheckedChange={(checked) => void toggleAttended(r.id, checked)}
+                              aria-label={`Marcar presença de ${r.contacts?.name ?? "contato"}`}
+                            />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
