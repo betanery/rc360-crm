@@ -77,7 +77,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for function_name in crm-automation crm-inbound crm-import crm-whatsapp-test crm-email-test crm-invite-user crm-event-public crm-event-submit crm-lead-research; do
+          # Descobre as functions a partir das pastas em supabase/functions,
+          # em vez de uma lista fixa — uma pasta nova esquecida aqui já
+          # causou deploy "bem-sucedido" que na prática não publicava a
+          # function (404 em produção mesmo com o workflow verde).
+          for dir in supabase/functions/*/; do
+            function_name="$(basename "$dir")"
+            if [ "$function_name" = "_shared" ]; then continue; fi
             echo "Deploying ${function_name}..."
             supabase functions deploy "$function_name" --project-ref "$SUPABASE_PROJECT_REF" --use-api
           done
