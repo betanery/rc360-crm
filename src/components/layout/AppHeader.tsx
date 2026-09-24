@@ -42,7 +42,34 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const overdueTasks = tasks
     .filter((t) => t.status === "Pendente" && new Date(t.dueAt) < new Date())
     .sort((a, b) => +new Date(a.dueAt) - +new Date(b.dueAt));
-  const notificationCount = overdueTasks.length + failedAutomations;
+  const totalNotifications = overdueTasks.length + failedAutomations;
+
+  // Guarda no navegador o que já foi visto, pra bolinha só contar o que
+  // é novo desde a última vez que o sino foi aberto — sem isso, ela
+  // nunca some mesmo depois de já ter olhado.
+  const SEEN_KEY = "rc360_notifications_seen";
+  const [seen, setSeen] = useState<{ taskIds: string[]; failedCount: number }>(() => {
+    try {
+      const raw = localStorage.getItem(SEEN_KEY);
+      return raw ? JSON.parse(raw) : { taskIds: [], failedCount: 0 };
+    } catch {
+      return { taskIds: [], failedCount: 0 };
+    }
+  });
+
+  function markAllAsSeen() {
+    const next = { taskIds: overdueTasks.map((t) => t.id), failedCount: failedAutomations };
+    setSeen(next);
+    try {
+      localStorage.setItem(SEEN_KEY, JSON.stringify(next));
+    } catch {
+      // localStorage indisponível (modo privado, etc.) — só não persiste
+    }
+  }
+
+  const notificationCount =
+    overdueTasks.filter((t) => !seen.taskIds.includes(t.id)).length +
+    Math.max(0, failedAutomations - seen.failedCount);
 
   return (
     <header className="sticky top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-card px-4 lg:px-8">
@@ -72,7 +99,7 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           />
         </div>
 
-        <Popover>
+        <Popover onOpenChange={(open) => open && markAllAsSeen()}>
           <PopoverTrigger asChild>
             <button
               className="relative rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
@@ -88,10 +115,21 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           </PopoverTrigger>
           <PopoverContent align="end" className="w-80 p-0">
             <div className="max-h-96 overflow-y-auto">
-              {notificationCount === 0 ? (
+              {totalNotifications === 0 ? (
                 <p className="p-4 text-sm text-muted-foreground">Nenhuma notificação por aqui.</p>
               ) : (
                 <>
+                  <div className="flex items-center justify-between border-b px-3 py-2">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Notificações
+                    </p>
+                    <button
+                      onClick={markAllAsSeen}
+                      className="text-xs font-medium text-primary hover:underline"
+                    >
+                      Marcar tudo como lido
+                    </button>
+                  </div>
                   {overdueTasks.length > 0 && (
                     <div className="border-b p-3">
                       <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
