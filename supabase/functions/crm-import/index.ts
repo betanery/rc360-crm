@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { findOrCreateBotConversaSubscriber } from "../_shared/botconversa.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -131,6 +132,14 @@ Deno.serve(async (req) => {
           .insert({ ...data, created_by: userData.user.id });
         if (error) throw error;
         created++;
+      }
+
+      if (data.whatsapp_opt_in) {
+        try {
+          await findOrCreateBotConversaSubscriber(phone, name);
+        } catch (subscriberError) {
+          console.error("findOrCreateBotConversaSubscriber failed", subscriberError);
+        }
       }
     } catch (error) {
       skipped++;

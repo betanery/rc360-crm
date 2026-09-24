@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { findOrCreateBotConversaSubscriber } from "../_shared/botconversa.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -127,6 +128,15 @@ Deno.serve(async (req) => {
     const { data, error } = await db.from("contacts").insert(contactData).select("id").single();
     if (error) return json({ error: error.message }, 500);
     contactId = data.id;
+  }
+
+  // Garante o cadastro na BotConversa já na inscrição, em vez de deixar
+  // pro primeiro envio da fila — não trava a resposta se a BotConversa
+  // falhar, só registra pra investigar depois.
+  try {
+    await findOrCreateBotConversaSubscriber(phone, name);
+  } catch (subscriberError) {
+    console.error("findOrCreateBotConversaSubscriber failed", subscriberError);
   }
 
   await db

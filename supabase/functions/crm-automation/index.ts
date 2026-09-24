@@ -1,5 +1,6 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { renderEmailHtml, renderEmailText } from "../_shared/email-template.ts";
+import { findOrCreateBotConversaSubscriber } from "../_shared/botconversa.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -20,55 +21,9 @@ const json = (body: unknown, status = 200) =>
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function findOrCreateSubscriber(normalized: string, name: string) {
-  const lookup = await fetch(`${BOT_BASE}/subscriber/get_by_phone/${normalized}/`, {
-    headers: { "API-KEY": BOTCONVERSA_KEY! },
-  });
-  if (lookup.ok) {
-    const subscriber = await lookup.json();
-    if (subscriber?.id) return subscriber.id;
-  } else if (lookup.status !== 404) {
-    throw new Error(`BotConversa lookup failed: ${lookup.status}`);
-  }
-
-  // Quem se inscreve pelo formulário público nunca mandou mensagem pro
-  // número do WhatsApp, então não existe como "subscriber" na BotConversa
-  // ainda (por isso o 404 acima) — precisa ser criado antes do primeiro
-  // envio. has_opt_in_whatsapp: true reflete o opt-in já capturado no
-  // cadastro (whatsapp_opt_in do contato, checado antes de chamar aqui).
-  const [firstName, ...rest] = name.trim().split(/\s+/);
-  const create = await fetch(`${BOT_BASE}/subscriber/`, {
-    method: "POST",
-    headers: { "API-KEY": BOTCONVERSA_KEY!, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      phone: normalized,
-      first_name: firstName || name,
-      last_name: rest.join(" "),
-      has_opt_in_whatsapp: true,
-    }),
-  });
-  if (!create.ok) {
-    const body = await create.json().catch(() => null);
-    throw new Error(
-      `BotConversa create subscriber failed: ${create.status} ${body?.error_message ?? ""}`.trim(),
-    );
-  }
-
-  const retry = await fetch(`${BOT_BASE}/subscriber/get_by_phone/${normalized}/`, {
-    headers: { "API-KEY": BOTCONVERSA_KEY! },
-  });
-  if (!retry.ok) throw new Error(`BotConversa lookup after create failed: ${retry.status}`);
-  const created = await retry.json();
-  if (!created?.id) throw new Error("BotConversa subscriber not found after create");
-  return created.id;
-}
-
 async function sendWhatsApp(phone: string, name: string, message: string) {
   if (!BOTCONVERSA_KEY) throw new Error("BOTCONVERSA_API_KEY not configured");
-  const digits = phone.replace(/\D/g, "");
-  const normalized = digits.startsWith("55") ? digits : `55${digits}`;
-
-  const subscriberId = await findOrCreateSubscriber(normalized, name);
+  const subscriberId = await findOrCreateBotConversaSubscriber(phone, name);
 
   const sent = await fetch(`${BOT_BASE}/subscriber/${subscriberId}/send_message/`, {
     method: "POST",
