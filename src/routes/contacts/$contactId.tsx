@@ -12,6 +12,7 @@ import {
   Plus,
   Save,
   Search,
+  Send,
   Sparkles,
   Tag,
   Trash2,
@@ -43,7 +44,18 @@ import { SourceField } from "@/components/contacts/SourceField";
 import { OwnerField } from "@/components/contacts/OwnerField";
 import { QualificationField } from "@/components/contacts/QualificationField";
 import { TagManager } from "@/components/contacts/TagManager";
+import { ObjectionManager } from "@/components/opportunities/ObjectionManager";
 import { toast } from "sonner";
+
+function fillProposalTemplate(template: string, name: string, product: string, value: string) {
+  return template
+    .replaceAll("{{nome}}", name.split(" ")[0] ?? name)
+    .replaceAll("{{produto}}", product)
+    .replaceAll("{{valor}}", value);
+}
+
+const DEFAULT_PROPOSAL_TEMPLATE =
+  "Olá {{nome}}! Segue a proposta customizada para {{produto}}, no valor de {{valor}}. Qualquer dúvida, é só chamar.";
 
 export const Route = createFileRoute("/contacts/$contactId")({ component: ContatoDetalhePage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
@@ -74,7 +86,17 @@ async function extractFunctionErrorMessage(error: unknown, fallback: string): Pr
 function ContatoDetalhePage() {
   const { contactId } = Route.useParams();
   const navigate = useNavigate();
-  const { contacts, opportunities, tasks, carts, updateContact, deleteContact, addTask } = useCRM();
+  const {
+    contacts,
+    opportunities,
+    tasks,
+    carts,
+    updateContact,
+    deleteContact,
+    addTask,
+    moveOpportunity,
+    updateOpportunityDecisionMap,
+  } = useCRM();
   const contact = contacts.find((c) => c.id === contactId);
   const [open, setOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -84,6 +106,12 @@ function ContatoDetalhePage() {
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
   const [taskOpen, setTaskOpen] = useState(false);
+  const [editingDecisionMapId, setEditingDecisionMapId] = useState<string | null>(null);
+  const [decisionMapDraft, setDecisionMapDraft] = useState("");
+  const [proposalOpportunityId, setProposalOpportunityId] = useState<string | null>(null);
+  const [proposalMessage, setProposalMessage] = useState("");
+  const [proposalChannel, setProposalChannel] = useState<"whatsapp" | "email">("whatsapp");
+  const [sendingProposal, setSendingProposal] = useState(false);
   const [research, setResearch] = useState<LeadResearch | null>(null);
   const [researchLoading, setResearchLoading] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -246,6 +274,54 @@ function ContatoDetalhePage() {
       toast.success("Tarefa criada.");
     } catch (reason) {
       toast.error(reason instanceof Error ? reason.message : "Não foi possível criar a tarefa.");
+    }
+  }
+
+  async function saveDecisionMap(opportunityId: string) {
+    try {
+      await updateOpportunityDecisionMap(opportunityId, decisionMapDraft);
+      setEditingDecisionMapId(null);
+      toast.success("Mapa de decisão salvo.");
+    } catch (reason) {
+      toast.error(
+        reason instanceof Error ? reason.message : "Não foi possível salvar o mapa de decisão.",
+      );
+    }
+  }
+
+  function openProposalDialog(opportunityId: string, product: string, value: number) {
+    setProposalOpportunityId(opportunityId);
+    setProposalChannel(contact?.phone ? "whatsapp" : "email");
+    setProposalMessage(
+      fillProposalTemplate(
+        DEFAULT_PROPOSAL_TEMPLATE,
+        contact?.name ?? "",
+        product,
+        money.format(value),
+      ),
+    );
+  }
+
+  async function sendProposal() {
+    if (!supabase || !contact || !proposalOpportunityId) return;
+    setSendingProposal(true);
+    try {
+      const { error } = await supabase.rpc("enqueue_automation", {
+        p_contact_id: contact.id,
+        p_opportunity_id: proposalOpportunityId,
+        p_channel: proposalChannel,
+        p_automation_type: "proposal",
+        p_message: proposalMessage,
+        p_subject: proposalChannel === "email" ? "Sua proposta" : null,
+      });
+      if (error) throw error;
+      await moveOpportunity(proposalOpportunityId, "Proposta enviada");
+      setProposalOpportunityId(null);
+      toast.success("Proposta enviada e etapa atualizada.");
+    } catch (reason) {
+      toast.error(reason instanceof Error ? reason.message : "Não foi possível enviar a proposta.");
+    } finally {
+      setSendingProposal(false);
     }
   }
 
@@ -635,17 +711,78 @@ function ContatoDetalhePage() {
         <CardContent className="space-y-3">
           {contactOpportunities.length ? (
             contactOpportunities.map((o) => (
-              <div
-                key={o.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-background p-3"
-              >
-                <div>
-                  <p className="font-medium">{o.nextAction}</p>
-                  <p className="text-xs text-muted-foreground">{shortDate(o.nextActionAt)}</p>
+              <div key={o.id} className="space-y-3 rounded-lg border bg-background p-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="font-medium">{o.nextAction}</p>
+                    <p className="text-xs text-muted-foreground">{shortDate(o.nextActionAt)}</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <Badge variant="outline">{o.stage}</Badge>
+                      <p className="mt-1 text-sm font-semibold">{money.format(o.value)}</p>
+                    </div>
+                    {supabase && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openProposalDialog(o.id, o.product, o.value)}
+                      >
+                        <Send className="h-3.5 w-3.5" /> Enviar proposta
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="text-right">
-                  <Badge variant="outline">{o.stage}</Badge>
-                  <p className="mt-1 text-sm font-semibold">{money.format(o.value)}</p>
+
+                <div>
+                  <p className="mb-1 text-xs font-medium text-muted-foreground">Objeções</p>
+                  <ObjectionManager opportunityId={o.id} objections={o.objections} />
+                </div>
+
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <p className="text-xs font-medium text-muted-foreground">Mapa de decisão</p>
+                    {supabase && editingDecisionMapId !== o.id && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => {
+                          setDecisionMapDraft(o.decisionMap);
+                          setEditingDecisionMapId(o.id);
+                        }}
+                        aria-label="Editar mapa de decisão"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                  {editingDecisionMapId === o.id ? (
+                    <div className="space-y-2">
+                      <textarea
+                        className="min-h-20 w-full rounded-md border bg-background p-3 text-sm"
+                        value={decisionMapDraft}
+                        onChange={(e) => setDecisionMapDraft(e.target.value)}
+                        placeholder="Ex: Decisor: Fulano, sócio. Influenciadora: Beltrana, financeiro."
+                        autoFocus
+                      />
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => void saveDecisionMap(o.id)}>
+                          <Save className="h-3.5 w-3.5" /> Salvar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEditingDecisionMapId(null)}
+                        >
+                          Cancelar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      {o.decisionMap || "Nenhum mapa de decisão registrado."}
+                    </p>
+                  )}
                 </div>
               </div>
             ))
@@ -654,6 +791,47 @@ function ContatoDetalhePage() {
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={proposalOpportunityId !== null}
+        onOpenChange={(isOpen) => !isOpen && setProposalOpportunityId(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enviar proposta</DialogTitle>
+            <DialogDescription>
+              Revise a mensagem antes de enviar. Ao enviar, a oportunidade passa para "Proposta
+              enviada".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <select
+              className={fieldClass}
+              value={proposalChannel}
+              onChange={(e) => setProposalChannel(e.target.value as "whatsapp" | "email")}
+            >
+              <option value="whatsapp">WhatsApp</option>
+              <option value="email">E-mail</option>
+            </select>
+            <textarea
+              className="min-h-32 w-full rounded-md border bg-background p-3 text-sm"
+              value={proposalMessage}
+              onChange={(e) => setProposalMessage(e.target.value)}
+            />
+            <Button
+              disabled={sendingProposal || !proposalMessage.trim()}
+              onClick={() => void sendProposal()}
+            >
+              {sendingProposal ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+              Enviar proposta
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

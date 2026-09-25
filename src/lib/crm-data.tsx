@@ -43,6 +43,8 @@ export interface Opportunity {
   nextAction: string;
   nextActionAt: string;
   lostReason?: string | undefined;
+  objections: string[];
+  decisionMap: string;
 }
 export interface Task {
   id: string;
@@ -186,6 +188,8 @@ const demoOpportunities: Opportunity[] = [
     value: 20000,
     nextAction: "Realizar call de diagnóstico",
     nextActionAt: iso(1, 14),
+    objections: [],
+    decisionMap: "",
   },
   {
     id: "o2",
@@ -195,6 +199,8 @@ const demoOpportunities: Opportunity[] = [
     value: 997,
     nextAction: "Confirmar faturamento e urgência",
     nextActionAt: iso(0, 16),
+    objections: [],
+    decisionMap: "",
   },
   {
     id: "o3",
@@ -204,6 +210,8 @@ const demoOpportunities: Opportunity[] = [
     value: 30000,
     nextAction: "Follow-up da proposta",
     nextActionAt: iso(-1, 11),
+    objections: [],
+    decisionMap: "",
   },
   {
     id: "o4",
@@ -214,6 +222,8 @@ const demoOpportunities: Opportunity[] = [
     nextAction: "Retomar em 30 dias",
     nextActionAt: iso(30),
     lostReason: "Sem retorno",
+    objections: [],
+    decisionMap: "",
   },
 ];
 const demoTasks: Task[] = [
@@ -265,9 +275,14 @@ interface CRMContextValue {
   addContactTag: (contactId: string, tagName: string) => Promise<void>;
   removeContactTag: (contactId: string, tagName: string) => Promise<void>;
   addOpportunity: (
-    opportunity: Omit<Opportunity, "id" | "stage" | "lostReason"> & { stage?: Stage },
+    opportunity: Omit<Opportunity, "id" | "stage" | "lostReason" | "objections" | "decisionMap"> & {
+      stage?: Stage;
+    },
   ) => Promise<void>;
   moveOpportunity: (id: string, stage: Stage, lostReason?: string) => Promise<void>;
+  addOpportunityObjection: (opportunityId: string, tagName: string) => Promise<void>;
+  removeOpportunityObjection: (opportunityId: string, tagName: string) => Promise<void>;
+  updateOpportunityDecisionMap: (opportunityId: string, decisionMap: string) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   addTask: (task: Omit<Task, "id" | "status">) => Promise<void>;
   updateCart: (id: string, status: CartRecovery["status"]) => Promise<void>;
@@ -368,7 +383,10 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           "id,name,company,phone,email,instagram,tiktok,cpf,product,source,campaign,owner_name,notes,market_time,team_size,referred_by,main_pain,wants_feedback,created_at,contact_tags(tags(name))",
         )
         .order("created_at", { ascending: false }),
-      supabase.from("opportunities").select("*").order("created_at", { ascending: false }),
+      supabase
+        .from("opportunities")
+        .select("*,opportunity_objections(tags(name))")
+        .order("created_at", { ascending: false }),
       supabase.from("tasks").select("*").order("due_at", { ascending: true }),
       supabase.from("cart_recoveries").select("*").order("updated_at", { ascending: false }),
     ]);
@@ -381,16 +399,28 @@ export function CRMProvider({ children }: { children: ReactNode }) {
     }
     setContacts(((contactsResult.data ?? []) as unknown as ContactRow[]).map(mapContact));
     setOpportunities(
-      (opportunitiesResult.data ?? []).map((row) => ({
-        id: row.id,
-        contactId: row.contact_id,
-        product: row.product,
-        stage: row.stage as Stage,
-        value: Number(row.value),
-        nextAction: row.next_action,
-        nextActionAt: row.next_action_at,
-        lostReason: row.lost_reason ?? undefined,
-      })),
+      (opportunitiesResult.data ?? []).map((row) => {
+        const objections = (row.opportunity_objections ?? []).flatMap(
+          (relation: { tags: { name: string } | { name: string }[] | null }) => {
+            if (!relation.tags) return [];
+            return Array.isArray(relation.tags)
+              ? relation.tags.map((tag) => tag.name)
+              : [relation.tags.name];
+          },
+        );
+        return {
+          id: row.id,
+          contactId: row.contact_id,
+          product: row.product,
+          stage: row.stage as Stage,
+          value: Number(row.value),
+          nextAction: row.next_action,
+          nextActionAt: row.next_action_at,
+          lostReason: row.lost_reason ?? undefined,
+          objections,
+          decisionMap: row.decision_map ?? "",
+        };
+      }),
     );
     setTasks(
       (tasksResult.data ?? []).map((row) => ({
@@ -621,7 +651,7 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         if (!supabase) {
           setOpportunities((items) => [
             ...items,
-            { ...opportunity, id: crypto.randomUUID(), stage },
+            { ...opportunity, id: crypto.randomUUID(), stage, objections: [], decisionMap: "" },
           ]);
           return;
         }
@@ -648,6 +678,8 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             nextAction: data.next_action,
             nextActionAt: data.next_action_at,
             lostReason: data.lost_reason ?? undefined,
+            objections: [],
+            decisionMap: "",
           },
           ...items,
         ]);
@@ -679,6 +711,84 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                 }
               : item,
           ),
+        );
+      },
+      addOpportunityObjection: async (opportunityId, tagName) => {
+        const trimmed = tagName.trim();
+        if (!trimmed) return;
+        if (!supabase) {
+          setOpportunities((items) =>
+            items.map((item) =>
+              item.id === opportunityId && !item.objections.includes(trimmed)
+                ? { ...item, objections: [...item.objections, trimmed] }
+                : item,
+            ),
+          );
+          return;
+        }
+        const { data: tag, error: tagError } = await supabase
+          .from("tags")
+          .upsert({ name: trimmed }, { onConflict: "organization_id,name" })
+          .select("id")
+          .single();
+        if (tagError) throw tagError;
+        const { error: linkError } = await supabase
+          .from("opportunity_objections")
+          .upsert(
+            { opportunity_id: opportunityId, tag_id: tag.id },
+            { onConflict: "opportunity_id,tag_id", ignoreDuplicates: true },
+          );
+        if (linkError) throw linkError;
+        setOpportunities((items) =>
+          items.map((item) =>
+            item.id === opportunityId && !item.objections.includes(trimmed)
+              ? { ...item, objections: [...item.objections, trimmed] }
+              : item,
+          ),
+        );
+      },
+      removeOpportunityObjection: async (opportunityId, tagName) => {
+        if (!supabase) {
+          setOpportunities((items) =>
+            items.map((item) =>
+              item.id === opportunityId
+                ? { ...item, objections: item.objections.filter((t) => t !== tagName) }
+                : item,
+            ),
+          );
+          return;
+        }
+        const { data: tag } = await supabase
+          .from("tags")
+          .select("id")
+          .eq("name", tagName)
+          .maybeSingle();
+        if (tag) {
+          const { error: deleteError } = await supabase
+            .from("opportunity_objections")
+            .delete()
+            .eq("opportunity_id", opportunityId)
+            .eq("tag_id", tag.id);
+          if (deleteError) throw deleteError;
+        }
+        setOpportunities((items) =>
+          items.map((item) =>
+            item.id === opportunityId
+              ? { ...item, objections: item.objections.filter((t) => t !== tagName) }
+              : item,
+          ),
+        );
+      },
+      updateOpportunityDecisionMap: async (opportunityId, decisionMap) => {
+        if (supabase) {
+          const { error: updateError } = await supabase
+            .from("opportunities")
+            .update({ decision_map: decisionMap || null })
+            .eq("id", opportunityId);
+          if (updateError) throw updateError;
+        }
+        setOpportunities((items) =>
+          items.map((item) => (item.id === opportunityId ? { ...item, decisionMap } : item)),
         );
       },
       toggleTask: async (id) => {
