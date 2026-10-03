@@ -11,8 +11,8 @@ create table if not exists public.opportunity_objections (
   tag_id uuid not null,
   created_at timestamptz not null default now(),
   primary key (opportunity_id, tag_id),
-  foreign key (organization_id, opportunity_id)
-    references public.opportunities(organization_id, id) on delete cascade,
+  foreign key (opportunity_id)
+    references public.opportunities(id) on delete cascade,
   foreign key (organization_id, tag_id)
     references public.tags(organization_id, id) on delete cascade
 );
