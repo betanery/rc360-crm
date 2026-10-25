@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Eye, Loader2, Plus, Send, Trash2 } from "lucide-react";
+import { Download, Eye, Loader2, Plus, Send, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -65,7 +65,7 @@ function defaultsFor(
     company: base.company,
     decisionMaker: base.decisionMaker,
     headline: "",
-    program: base.product,
+    program: "",
     subtitle: "",
     introTitle: "",
     intro: "",
@@ -426,6 +426,7 @@ export function ProposalDialog({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState<"preview" | "send" | null>(null);
   const [approved, setApproved] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -494,22 +495,29 @@ export function ProposalDialog({
   const patch = (changes: Partial<ProposalContent>) =>
     setContent((current) => (current ? { ...current, ...changes } : current));
 
+  // Pré-visualização dentro da própria tela (abrir aba nova é barrado por
+  // bloqueador de pop-up e pelo navegador embutido).
   async function preview() {
     if (!content) return;
-    // Abre a aba já no clique (senão o bloqueador de pop-up barra).
-    const tab = window.open("", "_blank");
     setBusy("preview");
     try {
       const blob = await buildProposalPdf(template, content);
-      const url = URL.createObjectURL(blob);
-      if (tab) tab.location.href = url;
-      else window.location.href = url;
+      setPreviewUrl((previous) => {
+        if (previous) URL.revokeObjectURL(previous);
+        return URL.createObjectURL(blob);
+      });
     } catch (reason) {
-      tab?.close();
       toast.error(reason instanceof Error ? reason.message : "Não foi possível gerar o PDF.");
     } finally {
       setBusy(null);
     }
+  }
+
+  function closePreview() {
+    setPreviewUrl((previous) => {
+      if (previous) URL.revokeObjectURL(previous);
+      return null;
+    });
   }
 
   async function send() {
@@ -580,344 +588,379 @@ export function ProposalDialog({
   }
 
   return (
-    <Dialog open={opportunity !== null} onOpenChange={(isOpen) => !isOpen && onClose()}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>Proposta em PDF</DialogTitle>
-          <DialogDescription>
-            Escolha o modelo, preencha o que for específico deste cliente e confira o PDF antes de
-            enviar. Campos em branco não aparecem na proposta.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={opportunity !== null} onOpenChange={(isOpen) => !isOpen && onClose()}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Proposta em PDF</DialogTitle>
+            <DialogDescription>
+              Escolha o modelo, preencha o que for específico deste cliente e confira o PDF antes de
+              enviar. Campos em branco não aparecem na proposta.
+            </DialogDescription>
+          </DialogHeader>
 
-        {!content ? (
-          <div className="flex justify-center py-8">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
-        ) : (
-          <div className="grid gap-4">
-            <div className="grid gap-2 sm:grid-cols-3">
-              {TEMPLATE_OPTIONS.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => changeTemplate(option.value)}
-                  className={`rounded-md border p-3 text-left text-sm ${
-                    template === option.value ? "border-primary bg-primary/5" : "hover:bg-muted/50"
-                  }`}
-                >
-                  <span className="block font-semibold">{option.label}</span>
-                  <span className="block text-xs text-muted-foreground">{option.hint}</span>
-                </button>
-              ))}
+          {!content ? (
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-5 w-5 animate-spin" />
             </div>
-
-            <Group title="Identificação">
-              <div className="grid gap-2 sm:grid-cols-2">
-                <Field
-                  label="Nome do cliente"
-                  value={content.clientName}
-                  onChange={(clientName) => patch({ clientName })}
-                />
-                {template !== "entrada" && (
-                  <Field
-                    label="Empresa"
-                    value={content.company}
-                    onChange={(company) => patch({ company })}
-                  />
-                )}
-                {template === "estrategica" && (
-                  <Field
-                    label="Aos cuidados de (decisor)"
-                    value={content.decisionMaker}
-                    onChange={(decisionMaker) => patch({ decisionMaker })}
-                  />
-                )}
-                <Field
-                  label="Nº da proposta"
-                  value={content.number}
-                  onChange={(number) => patch({ number })}
-                />
-                <Field
-                  label="Validade"
-                  type="date"
-                  value={content.validUntil}
-                  onChange={(validUntil) => patch({ validUntil })}
-                />
+          ) : (
+            <div className="grid gap-4">
+              <div className="grid gap-2 sm:grid-cols-3">
+                {TEMPLATE_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => changeTemplate(option.value)}
+                    className={`rounded-md border p-3 text-left text-sm ${
+                      template === option.value
+                        ? "border-primary bg-primary/5"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <span className="block font-semibold">{option.label}</span>
+                    <span className="block text-xs text-muted-foreground">{option.hint}</span>
+                  </button>
+                ))}
               </div>
-              <Field
-                label={
-                  template === "entrada" ? "Título da capa" : "Headline (frase principal da capa)"
-                }
-                value={content.headline}
-                placeholder="Frase conectada ao principal desafio do cliente"
-                onChange={(headline) => patch({ headline })}
-              />
-              <Field
-                label={template === "entrada" ? "Produto" : "Nome do produto / programa / projeto"}
-                value={content.program}
-                onChange={(program) => patch({ program })}
-              />
-              <Field
-                label="Frase de apoio da capa"
-                value={content.subtitle}
-                onChange={(subtitle) => patch({ subtitle })}
-              />
-            </Group>
 
-            {template === "entrada" && (
-              <>
-                <Group title="Abertura">
+              <Group title="Identificação">
+                <div className="grid gap-2 sm:grid-cols-2">
                   <Field
-                    label="Título"
-                    value={content.introTitle}
-                    onChange={(introTitle) => patch({ introTitle })}
+                    label="Nome do cliente"
+                    value={content.clientName}
+                    onChange={(clientName) => patch({ clientName })}
+                  />
+                  {template !== "entrada" && (
+                    <Field
+                      label="Empresa"
+                      value={content.company}
+                      onChange={(company) => patch({ company })}
+                    />
+                  )}
+                  {template === "estrategica" && (
+                    <Field
+                      label="Aos cuidados de (decisor)"
+                      value={content.decisionMaker}
+                      onChange={(decisionMaker) => patch({ decisionMaker })}
+                    />
+                  )}
+                  <Field
+                    label="Nº da proposta"
+                    value={content.number}
+                    onChange={(number) => patch({ number })}
+                  />
+                  <Field
+                    label="Validade"
+                    type="date"
+                    value={content.validUntil}
+                    onChange={(validUntil) => patch({ validUntil })}
+                  />
+                </div>
+                <Field
+                  label={
+                    template === "entrada" ? "Título da capa" : "Headline (frase principal da capa)"
+                  }
+                  value={content.headline}
+                  placeholder="Frase conectada ao principal desafio do cliente"
+                  onChange={(headline) => patch({ headline })}
+                />
+                <Field
+                  label={
+                    template === "entrada" ? "Produto" : "Nome do produto / programa / projeto"
+                  }
+                  value={content.program}
+                  onChange={(program) => patch({ program })}
+                />
+                <Field
+                  label="Frase de apoio da capa"
+                  value={content.subtitle}
+                  onChange={(subtitle) => patch({ subtitle })}
+                />
+              </Group>
+
+              {template === "entrada" && (
+                <>
+                  <Group title="Abertura">
+                    <Field
+                      label="Título"
+                      value={content.introTitle}
+                      onChange={(introTitle) => patch({ introTitle })}
+                    />
+                    <Area
+                      label="Texto"
+                      value={content.intro}
+                      onChange={(intro) => patch({ intro })}
+                      rows={5}
+                    />
+                  </Group>
+                  <Group title="O que está incluído">
+                    <ItemsEditor
+                      items={content.included}
+                      onChange={(included) => patch({ included })}
+                      titleLabel="Item"
+                      textLabel="Descrição"
+                    />
+                    <KVEditor rows={content.terms} onChange={(terms) => patch({ terms })} />
+                  </Group>
+                </>
+              )}
+
+              {template !== "entrada" && (
+                <Group title={template === "estrategica" ? "Cenário atual" : "Ponto de partida"}>
+                  {template === "estrategica" && (
+                    <Field
+                      label="Momento da empresa (ex.: expansão, reestruturação, profissionalização)"
+                      value={content.momento}
+                      onChange={(momento) => patch({ momento })}
+                    />
+                  )}
+                  <ItemsEditor
+                    items={content.challenges}
+                    onChange={(challenges) => patch({ challenges })}
+                    titleLabel="Desafio"
+                    textLabel="Descrição e impacto relatado"
                   />
                   <Area
-                    label="Texto"
-                    value={content.intro}
-                    onChange={(intro) => patch({ intro })}
-                    rows={5}
+                    label={
+                      template === "estrategica"
+                        ? "O que está em jogo (fatos relatados x hipóteses)"
+                        : "Esses desafios merecem atenção porque… (áreas e resultados impactados)"
+                    }
+                    value={content.stakes}
+                    onChange={(stakes) => patch({ stakes })}
+                  />
+                  {template === "executiva" ? (
+                    <Field
+                      label="Nossa prioridade (objetivo acordado)"
+                      value={content.priority}
+                      onChange={(priority) => patch({ priority })}
+                    />
+                  ) : (
+                    <Area
+                      label="Desafio central (frase de fechamento)"
+                      value={content.centralChallenge}
+                      onChange={(centralChallenge) => patch({ centralChallenge })}
+                      rows={2}
+                    />
+                  )}
+                </Group>
+              )}
+
+              {template === "estrategica" && (
+                <Group title="Onde queremos chegar">
+                  <Field
+                    label="Gestão mais… (características desejadas)"
+                    value={content.desiredTraits}
+                    onChange={(desiredTraits) => patch({ desiredTraits })}
+                  />
+                  <ItemsEditor
+                    items={content.objectives}
+                    onChange={(objectives) => patch({ objectives })}
+                    titleLabel="Objetivo"
+                    textLabel="Indicador ou evidência de evolução"
                   />
                 </Group>
-                <Group title="O que está incluído">
+              )}
+
+              {template !== "entrada" && (
+                <Group
+                  title={
+                    template === "estrategica" ? "Frentes de atuação" : "O que vamos desenvolver"
+                  }
+                >
+                  {template === "executiva" && (
+                    <Field
+                      label="Solução direcionada a… (objetivo central)"
+                      value={content.objective}
+                      onChange={(objective) => patch({ objective })}
+                    />
+                  )}
+                  {template === "estrategica" && (
+                    <p className="text-xs text-muted-foreground">
+                      Só entram na proposta as frentes com escopo preenchido.
+                    </p>
+                  )}
                   <ItemsEditor
-                    items={content.included}
-                    onChange={(included) => patch({ included })}
-                    titleLabel="Item"
-                    textLabel="Descrição"
+                    items={content.fronts}
+                    onChange={(fronts) => patch({ fronts })}
+                    titleLabel="Frente"
+                    textLabel="Atividade prevista e benefício esperado"
+                  />
+                </Group>
+              )}
+
+              {template !== "entrada" && (
+                <Group title="Entregáveis e execução">
+                  <DeliverablesEditor
+                    rows={content.deliverables}
+                    onChange={(deliverables) => patch({ deliverables })}
+                    withQty={template === "estrategica"}
                   />
                   <KVEditor rows={content.terms} onChange={(terms) => patch({ terms })} />
-                </Group>
-              </>
-            )}
-
-            {template !== "entrada" && (
-              <Group title={template === "estrategica" ? "Cenário atual" : "Ponto de partida"}>
-                {template === "estrategica" && (
-                  <Field
-                    label="Momento da empresa (ex.: expansão, reestruturação, profissionalização)"
-                    value={content.momento}
-                    onChange={(momento) => patch({ momento })}
-                  />
-                )}
-                <ItemsEditor
-                  items={content.challenges}
-                  onChange={(challenges) => patch({ challenges })}
-                  titleLabel="Desafio"
-                  textLabel="Descrição e impacto relatado"
-                />
-                <Area
-                  label={
-                    template === "estrategica"
-                      ? "O que está em jogo (fatos relatados x hipóteses)"
-                      : "Esses desafios merecem atenção porque… (áreas e resultados impactados)"
-                  }
-                  value={content.stakes}
-                  onChange={(stakes) => patch({ stakes })}
-                />
-                {template === "executiva" ? (
-                  <Field
-                    label="Nossa prioridade (objetivo acordado)"
-                    value={content.priority}
-                    onChange={(priority) => patch({ priority })}
-                  />
-                ) : (
                   <Area
-                    label="Desafio central (frase de fechamento)"
-                    value={content.centralChallenge}
-                    onChange={(centralChallenge) => patch({ centralChallenge })}
-                    rows={2}
+                    label="Condições específicas negociadas"
+                    value={content.conditions}
+                    onChange={(conditions) => patch({ conditions })}
                   />
-                )}
-              </Group>
-            )}
-
-            {template === "estrategica" && (
-              <Group title="Onde queremos chegar">
-                <Field
-                  label="Gestão mais… (características desejadas)"
-                  value={content.desiredTraits}
-                  onChange={(desiredTraits) => patch({ desiredTraits })}
-                />
-                <ItemsEditor
-                  items={content.objectives}
-                  onChange={(objectives) => patch({ objectives })}
-                  titleLabel="Objetivo"
-                  textLabel="Indicador ou evidência de evolução"
-                />
-              </Group>
-            )}
-
-            {template !== "entrada" && (
-              <Group
-                title={
-                  template === "estrategica" ? "Frentes de atuação" : "O que vamos desenvolver"
-                }
-              >
-                {template === "executiva" && (
                   <Field
-                    label="Solução direcionada a… (objetivo central)"
-                    value={content.objective}
-                    onChange={(objective) => patch({ objective })}
+                    label="Início (condição ou data)"
+                    value={content.startCondition}
+                    onChange={(startCondition) => patch({ startCondition })}
                   />
-                )}
-                {template === "estrategica" && (
+                </Group>
+              )}
+
+              {template !== "entrada" && (
+                <Group title="Impacto econômico (opcional)">
+                  <KVEditor rows={content.impact} onChange={(impact) => patch({ impact })} />
+                </Group>
+              )}
+
+              {template !== "entrada" && (
+                <Group title="Composição do investimento (opcional)">
                   <p className="text-xs text-muted-foreground">
-                    Só entram na proposta as frentes com escopo preenchido.
+                    Use somente preços avulsos realmente praticados ou referências documentadas.
                   </p>
-                )}
-                <ItemsEditor
-                  items={content.fronts}
-                  onChange={(fronts) => patch({ fronts })}
-                  titleLabel="Frente"
-                  textLabel="Atividade prevista e benefício esperado"
-                />
-              </Group>
-            )}
+                  <ComponentsEditor
+                    rows={content.components}
+                    onChange={(components) => patch({ components })}
+                  />
+                </Group>
+              )}
 
-            {template !== "entrada" && (
-              <Group title="Entregáveis e execução">
-                <DeliverablesEditor
-                  rows={content.deliverables}
-                  onChange={(deliverables) => patch({ deliverables })}
-                  withQty={template === "estrategica"}
-                />
-                <KVEditor rows={content.terms} onChange={(terms) => patch({ terms })} />
-                <Area
-                  label="Condições específicas negociadas"
-                  value={content.conditions}
-                  onChange={(conditions) => patch({ conditions })}
-                />
-                <Field
-                  label="Início (condição ou data)"
-                  value={content.startCondition}
-                  onChange={(startCondition) => patch({ startCondition })}
-                />
-              </Group>
-            )}
-
-            {template !== "entrada" && (
-              <Group title="Impacto econômico (opcional)">
-                <KVEditor rows={content.impact} onChange={(impact) => patch({ impact })} />
-              </Group>
-            )}
-
-            {template !== "entrada" && (
-              <Group title="Composição do investimento (opcional)">
-                <p className="text-xs text-muted-foreground">
-                  Use somente preços avulsos realmente praticados ou referências documentadas.
-                </p>
-                <ComponentsEditor
-                  rows={content.components}
-                  onChange={(components) => patch({ components })}
-                />
-              </Group>
-            )}
-
-            <Group title="Investimento">
-              <div className="grid gap-2 sm:grid-cols-2">
+              <Group title="Investimento">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {template === "entrada" && (
+                    <Field
+                      label="Valor de referência (opcional)"
+                      type="number"
+                      value={content.referencePrice?.toString() ?? ""}
+                      onChange={(value) => patch({ referencePrice: value ? Number(value) : null })}
+                    />
+                  )}
+                  <Field
+                    label="Valor final (R$)"
+                    type="number"
+                    value={content.price ? String(content.price) : ""}
+                    onChange={(value) => patch({ price: value ? Number(value) : 0 })}
+                  />
+                  <Field
+                    label="À vista"
+                    value={content.cash}
+                    onChange={(cash) => patch({ cash })}
+                  />
+                  <Field
+                    label="Parcelamento (ex.: 6 x R$ 500,00)"
+                    value={content.installments}
+                    onChange={(installments) => patch({ installments })}
+                  />
+                  <Field
+                    label="Forma de pagamento"
+                    value={content.payment}
+                    onChange={(payment) => patch({ payment })}
+                  />
+                  {template === "estrategica" && (
+                    <Field
+                      label="Primeiro vencimento"
+                      value={content.firstDue}
+                      onChange={(firstDue) => patch({ firstDue })}
+                    />
+                  )}
+                  <Field
+                    label="Condição especial negociada"
+                    value={content.special}
+                    onChange={(special) => patch({ special })}
+                  />
+                </div>
                 {template === "entrada" && (
                   <Field
-                    label="Valor de referência (opcional)"
-                    type="number"
-                    value={content.referencePrice?.toString() ?? ""}
-                    onChange={(value) => patch({ referencePrice: value ? Number(value) : null })}
+                    label="Observação sobre o valor"
+                    value={content.priceNote}
+                    onChange={(priceNote) => patch({ priceNote })}
                   />
                 )}
-                <Field
-                  label="Valor final (R$)"
-                  type="number"
-                  value={content.price ? String(content.price) : ""}
-                  onChange={(value) => patch({ price: value ? Number(value) : 0 })}
+              </Group>
+
+              <Group title="Envio">
+                <select
+                  className={fieldClass}
+                  value={channel}
+                  onChange={(e) => setChannel(e.target.value as "whatsapp" | "email")}
+                >
+                  <option value="whatsapp">WhatsApp (PDF como documento)</option>
+                  <option value="email">E-mail (PDF em anexo)</option>
+                </select>
+                <Area label="Mensagem que acompanha o PDF" value={message} onChange={setMessage} />
+              </Group>
+
+              <label className="flex items-start gap-2 rounded-md border border-dashed p-3 text-sm">
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={approved}
+                  onChange={(e) => setApproved(e.target.checked)}
                 />
-                <Field label="À vista" value={content.cash} onChange={(cash) => patch({ cash })} />
-                <Field
-                  label="Parcelamento (ex.: 6 x R$ 500,00)"
-                  value={content.installments}
-                  onChange={(installments) => patch({ installments })}
-                />
-                <Field
-                  label="Forma de pagamento"
-                  value={content.payment}
-                  onChange={(payment) => patch({ payment })}
-                />
-                {template === "estrategica" && (
-                  <Field
-                    label="Primeiro vencimento"
-                    value={content.firstDue}
-                    onChange={(firstDue) => patch({ firstDue })}
-                  />
-                )}
-                <Field
-                  label="Condição especial negociada"
-                  value={content.special}
-                  onChange={(special) => patch({ special })}
-                />
+                <span>
+                  Revisei o PDF (valores, descontos e escopo negociado) e aprovo o envio ao cliente.
+                </span>
+              </label>
+
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy !== null}
+                  onClick={() => void preview()}
+                >
+                  {busy === "preview" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                  Ver PDF
+                </Button>
+                <Button
+                  type="button"
+                  disabled={busy !== null || !approved || !message.trim() || !supabase}
+                  onClick={() => void send()}
+                >
+                  {busy === "send" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Enviar proposta
+                </Button>
               </div>
-              {template === "entrada" && (
-                <Field
-                  label="Observação sobre o valor"
-                  value={content.priceNote}
-                  onChange={(priceNote) => patch({ priceNote })}
-                />
-              )}
-            </Group>
-
-            <Group title="Envio">
-              <select
-                className={fieldClass}
-                value={channel}
-                onChange={(e) => setChannel(e.target.value as "whatsapp" | "email")}
-              >
-                <option value="whatsapp">WhatsApp (PDF como documento)</option>
-                <option value="email">E-mail (PDF em anexo)</option>
-              </select>
-              <Area label="Mensagem que acompanha o PDF" value={message} onChange={setMessage} />
-            </Group>
-
-            <label className="flex items-start gap-2 rounded-md border border-dashed p-3 text-sm">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={approved}
-                onChange={(e) => setApproved(e.target.checked)}
-              />
-              <span>
-                Revisei o PDF (valores, descontos e escopo negociado) e aprovo o envio ao cliente.
-              </span>
-            </label>
-
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={busy !== null}
-                onClick={() => void preview()}
-              >
-                {busy === "preview" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Eye className="h-4 w-4" />
-                )}
-                Ver PDF
-              </Button>
-              <Button
-                type="button"
-                disabled={busy !== null || !approved || !message.trim() || !supabase}
-                onClick={() => void send()}
-              >
-                {busy === "send" ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-                Enviar proposta
-              </Button>
             </div>
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={previewUrl !== null} onOpenChange={(isOpen) => !isOpen && closePreview()}>
+        <DialogContent className="flex h-[90vh] flex-col sm:max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Pré-visualização da proposta</DialogTitle>
+            <DialogDescription>
+              Confira valores, descontos e escopo. Feche para voltar e ajustar.
+            </DialogDescription>
+          </DialogHeader>
+          {previewUrl && (
+            <>
+              <iframe
+                title="Pré-visualização da proposta"
+                src={previewUrl}
+                className="min-h-0 w-full flex-1 rounded-md border"
+              />
+              <Button asChild variant="outline">
+                <a href={previewUrl} download={`Proposta-RC360-${content?.number ?? ""}.pdf`}>
+                  <Download className="h-4 w-4" /> Baixar PDF
+                </a>
+              </Button>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
