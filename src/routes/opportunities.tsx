@@ -190,14 +190,30 @@ function OportunidadesPage() {
                 value={formValue}
                 onChange={(e) => setFormValue(e.target.value)}
               />
-              {prices[formProduct] !== undefined && (
+              {prices[formProduct] !== undefined ? (
                 <p className="-mt-1 text-xs text-muted-foreground">
                   Valor do cadastro do produto: {money.format(prices[formProduct])}. Você pode
                   alterar.
                 </p>
+              ) : (
+                formProduct && (
+                  <p className="-mt-1 text-xs text-muted-foreground">
+                    Este produto ainda não tem preço cadastrado.{" "}
+                    <Link to="/products" className="text-primary underline">
+                      Cadastrar preço em Produtos
+                    </Link>
+                    .
+                  </p>
+                )
               )}
-              <Input name="nextAction" placeholder="Próxima ação *" required />
-              <Input name="dueDate" type="date" required />
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                Próxima ação — o que precisa ser feito
+                <Input name="nextAction" placeholder="Ex.: Ligar para fechar *" required />
+              </label>
+              <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                Prazo da próxima ação — até quando
+                <Input name="dueDate" type="date" required />
+              </label>
               <Button>Salvar oportunidade</Button>
             </form>
           </DialogContent>
