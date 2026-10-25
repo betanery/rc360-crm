@@ -14,6 +14,7 @@ import { useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import {
   buildProposalPdf,
+  formatMoney,
   type ProposalContent,
   type ProposalTemplate,
   type TitledItem,
@@ -22,6 +23,7 @@ import {
   type ComponentRow,
 } from "@/lib/proposal-pdf";
 import { toast } from "sonner";
+import { Area, DeliverablesEditor, Field, Group } from "@/components/forms/fields";
 
 const fieldClass = "h-9 rounded-md border bg-background px-2 text-sm";
 
@@ -180,60 +182,6 @@ function defaultsFor(
   };
 }
 
-function Field({
-  label,
-  value,
-  onChange,
-  type = "text",
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  type?: string;
-  placeholder?: string;
-}) {
-  return (
-    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-      {label}
-      <Input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    </label>
-  );
-}
-
-function Area({
-  label,
-  value,
-  onChange,
-  rows = 3,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-  rows?: number;
-}) {
-  return (
-    <label className="grid gap-1 text-xs font-medium text-muted-foreground">
-      {label}
-      <Textarea rows={rows} value={value} onChange={(e) => onChange(e.target.value)} />
-    </label>
-  );
-}
-
-function Group({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="space-y-3 rounded-md border p-3">
-      <p className="text-sm font-semibold">{title}</p>
-      {children}
-    </div>
-  );
-}
-
 function ItemsEditor({
   items,
   onChange,
@@ -280,62 +228,6 @@ function ItemsEditor({
         variant="outline"
         size="sm"
         onClick={() => onChange([...items, { title: "", text: "" }])}
-      >
-        <Plus className="h-3.5 w-3.5" /> Adicionar
-      </Button>
-    </div>
-  );
-}
-
-function DeliverablesEditor({
-  rows,
-  onChange,
-  withQty,
-}: {
-  rows: DeliverableRow[];
-  onChange: (rows: DeliverableRow[]) => void;
-  withQty: boolean;
-}) {
-  const update = (index: number, patch: Partial<DeliverableRow>) =>
-    onChange(rows.map((row, i) => (i === index ? { ...row, ...patch } : row)));
-  return (
-    <div className="space-y-2">
-      {rows.map((row, index) => (
-        <div key={index} className="flex gap-2">
-          <Input
-            placeholder="Entregável"
-            value={row.name}
-            onChange={(e) => update(index, { name: e.target.value })}
-          />
-          {withQty && (
-            <Input
-              className="w-24"
-              placeholder="Qtd."
-              value={row.qty}
-              onChange={(e) => update(index, { qty: e.target.value })}
-            />
-          )}
-          <Input
-            placeholder={withQty ? "Critério de conclusão" : "Descrição / quantidade"}
-            value={row.criteria}
-            onChange={(e) => update(index, { criteria: e.target.value })}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Remover"
-            onClick={() => onChange(rows.filter((_, i) => i !== index))}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
-      <Button
-        type="button"
-        variant="outline"
-        size="sm"
-        onClick={() => onChange([...rows, { name: "", qty: "", criteria: "" }])}
       >
         <Plus className="h-3.5 w-3.5" /> Adicionar
       </Button>
@@ -410,6 +302,72 @@ function ComponentsEditor({
   );
 }
 
+interface CatalogProduct {
+  id: string;
+  name: string;
+  template: ProposalTemplate;
+  price: number | null;
+  audience: string;
+  summary: string;
+  deliverables: DeliverableRow[];
+  format: string;
+  participants: string;
+  duration: string;
+  validityDays: number;
+  paymentTerms: string;
+  notes: string;
+}
+
+const CATALOG_COLUMNS =
+  "id,name,template,price,audience,summary,deliverables,format,participants,duration,validity_days,payment_terms,notes";
+
+function addDays(iso: string, days: number) {
+  const date = new Date(`${iso}T12:00:00`);
+  date.setDate(date.getDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+// Preenche a proposta com os dados cadastrados no produto (tudo editável depois).
+function contentFromProduct(
+  product: CatalogProduct,
+  current: ProposalContent,
+  template: ProposalTemplate,
+): ProposalContent {
+  const content = defaultsFor(template, {
+    number: current.number,
+    date: current.date,
+    validUntil: addDays(current.date, product.validityDays),
+    clientName: current.clientName,
+    company: current.company,
+    decisionMaker: current.decisionMaker,
+    price: product.price ?? current.price,
+    payment: product.paymentTerms,
+    product: product.name,
+  });
+  const rows = product.deliverables.filter((row) => row.name.trim());
+  const fromProduct: Record<string, string> = {
+    Duração: product.duration,
+    "Duração da devolutiva": product.duration,
+    Formato: product.format,
+    Modalidade: product.format,
+    Participantes: product.participants,
+  };
+  content.program = product.name;
+  if (product.summary.trim()) content.subtitle = product.summary.trim();
+  content.terms = content.terms.map((term) => ({
+    ...term,
+    value: fromProduct[term.label]?.trim() ? fromProduct[term.label]! : term.value,
+  }));
+  if (template === "entrada") {
+    if (rows.length) content.included = rows.map((r) => ({ title: r.name, text: r.criteria }));
+    if (product.notes.trim()) content.priceNote = product.notes.trim();
+  } else {
+    if (rows.length) content.deliverables = rows;
+    content.conditions = product.notes.trim();
+  }
+  return content;
+}
+
 export function ProposalDialog({
   opportunity,
   contact,
@@ -427,6 +385,8 @@ export function ProposalDialog({
   const [busy, setBusy] = useState<"preview" | "send" | null>(null);
   const [approved, setApproved] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
+  const [productId, setProductId] = useState("");
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -440,43 +400,90 @@ export function ProposalDialog({
     setMessage(
       `Olá ${contact.name.split(" ")[0] ?? contact.name}! Segue a proposta personalizada da RC360 em PDF. Qualquer dúvida, é só chamar.`,
     );
+    setProductId("");
     const year = new Date().getFullYear();
-    const finish = (count: number) => {
+    const finish = (count: number, products: CatalogProduct[]) => {
       if (cancelled) return;
-      setContent(
-        defaultsFor("executiva", {
-          number: `${year}-${String(count + 1).padStart(3, "0")}`,
-          date: today,
-          validUntil: "",
-          clientName: contact.name,
-          company: contact.company,
-          decisionMaker: contact.name,
-          price: opportunity.value,
-          payment: "",
-          product: opportunity.product,
-        }),
-      );
+      setCatalog(products);
+      const base = defaultsFor("executiva", {
+        number: `${year}-${String(count + 1).padStart(3, "0")}`,
+        date: today,
+        validUntil: "",
+        clientName: contact.name,
+        company: contact.company,
+        decisionMaker: contact.name,
+        price: opportunity.value,
+        payment: "",
+        product: opportunity.product,
+      });
+      const match = products.find((p) => p.name === opportunity.product);
+      if (match) {
+        setProductId(match.id);
+        setTemplate(match.template);
+        setContent(contentFromProduct(match, base, match.template));
+      } else {
+        setContent(base);
+      }
     };
     if (!supabase) {
-      finish(0);
+      finish(0, []);
       return () => {
         cancelled = true;
       };
     }
-    void supabase
-      .from("proposals")
-      .select("id", { count: "exact", head: true })
-      .gte("created_at", `${year}-01-01`)
-      .then(({ count }) => finish(count ?? 0));
+    const client = supabase;
+    void (async () => {
+      const [{ count }, catalogResult] = await Promise.all([
+        client
+          .from("proposals")
+          .select("id", { count: "exact", head: true })
+          .gte("created_at", `${year}-01-01`),
+        // Sem a migration do catálogo a consulta falha: segue sem produtos.
+        client.from("products").select(CATALOG_COLUMNS).eq("active", true).order("name"),
+      ]);
+      const products: CatalogProduct[] = catalogResult.error
+        ? []
+        : (catalogResult.data ?? []).map((row) => ({
+            id: row.id as string,
+            name: row.name as string,
+            template: ((row.template as ProposalTemplate) ?? "executiva") as ProposalTemplate,
+            price: row.price === null || row.price === undefined ? null : Number(row.price),
+            audience: (row.audience as string) ?? "",
+            summary: (row.summary as string) ?? "",
+            deliverables: Array.isArray(row.deliverables)
+              ? (row.deliverables as DeliverableRow[])
+              : [],
+            format: (row.format as string) ?? "",
+            participants: (row.participants as string) ?? "",
+            duration: (row.duration as string) ?? "",
+            validityDays: (row.validity_days as number) ?? 15,
+            paymentTerms: (row.payment_terms as string) ?? "",
+            notes: (row.notes as string) ?? "",
+          }));
+      finish(count ?? 0, products);
+    })();
     return () => {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [opportunity?.id]);
 
+  function chooseProduct(id: string) {
+    setProductId(id);
+    const product = catalog.find((p) => p.id === id);
+    if (!product || !content) return;
+    setTemplate(product.template);
+    setContent(contentFromProduct(product, content, product.template));
+  }
+
   function changeTemplate(next: ProposalTemplate) {
     if (!content || !opportunity) return;
     setTemplate(next);
+    const product = catalog.find((p) => p.id === productId);
+    if (product) {
+      setContent(contentFromProduct(product, content, next));
+      return;
+    }
     setContent(
       defaultsFor(next, {
         number: content.number,
@@ -605,6 +612,24 @@ export function ProposalDialog({
             </div>
           ) : (
             <div className="grid gap-4">
+              {catalog.length > 0 && (
+                <label className="grid gap-1 text-xs font-medium text-muted-foreground">
+                  Produto (preenche modelo, valor, entregáveis e condições)
+                  <select
+                    className={fieldClass}
+                    value={productId}
+                    onChange={(e) => chooseProduct(e.target.value)}
+                  >
+                    <option value="">Preencher manualmente</option>
+                    {catalog.map((product) => (
+                      <option key={product.id} value={product.id}>
+                        {product.name}
+                        {product.price !== null ? ` — ${formatMoney(product.price)}` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
               <div className="grid gap-2 sm:grid-cols-3">
                 {TEMPLATE_OPTIONS.map((option) => (
                   <button
