@@ -1,8 +1,16 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Clock, Plus, Save, Trash2 } from "lucide-react";
+import { Clock, Eye, Mail, Plus, Save, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { renderEmailHtml } from "../../../supabase/functions/_shared/email-template";
 import { stages as staticStages } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -35,6 +43,9 @@ interface StepDraft {
   channel: "whatsapp" | "email";
   subject: string;
   message: string;
+  preheader: string;
+  ctaLabel: string;
+  ctaUrl: string;
 }
 
 const emptyStep = (dayOffset: number): StepDraft => ({
@@ -43,6 +54,9 @@ const emptyStep = (dayOffset: number): StepDraft => ({
   channel: "whatsapp",
   subject: "",
   message: "",
+  preheader: "",
+  ctaLabel: "",
+  ctaUrl: "",
 });
 
 function isMissingTable(error: { code?: string; message?: string } | null) {
@@ -65,6 +79,7 @@ export function CadenceBuilder({ cadenceId }: { cadenceId?: string }) {
   const [audience, setAudience] = useState<AudienceFilters>(emptyAudienceFilters);
   const [active, setActive] = useState(true);
   const [steps, setSteps] = useState<StepDraft[]>([emptyStep(0)]);
+  const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [availableTags, setAvailableTags] = useState<string[]>([]);
   const [stageOptions, setStageOptions] = useState<string[]>(staticStages);
@@ -113,11 +128,21 @@ export function CadenceBuilder({ cadenceId }: { cadenceId?: string }) {
       setAudience(audienceFiltersFromJson(cadence.audience_filters as Record<string, unknown>));
       setActive(cadence.active);
 
-      const { data: stepRows } = await supabase
+      // Campos de e-mail (migration 023); sem ela, carrega só os básicos.
+      const full = await supabase
         .from("cadence_steps")
-        .select("id,day_offset,time_of_day,channel,subject,message")
+        .select("id,day_offset,time_of_day,channel,subject,message,preheader,cta_label,cta_url")
         .eq("cadence_id", cadenceId)
         .order("step_order", { ascending: true });
+      const stepRows = full.error
+        ? (
+            await supabase
+              .from("cadence_steps")
+              .select("id,day_offset,time_of_day,channel,subject,message")
+              .eq("cadence_id", cadenceId)
+              .order("step_order", { ascending: true })
+          ).data
+        : full.data;
       if (stepRows?.length) {
         setSteps(
           stepRows.map((s) => ({
@@ -127,6 +152,9 @@ export function CadenceBuilder({ cadenceId }: { cadenceId?: string }) {
             channel: s.channel as "whatsapp" | "email",
             subject: s.subject ?? "",
             message: s.message ?? "",
+            preheader: ("preheader" in s ? (s.preheader as string | null) : null) ?? "",
+            ctaLabel: ("cta_label" in s ? (s.cta_label as string | null) : null) ?? "",
+            ctaUrl: ("cta_url" in s ? (s.cta_url as string | null) : null) ?? "",
           })),
         );
       }
@@ -152,6 +180,35 @@ export function CadenceBuilder({ cadenceId }: { cadenceId?: string }) {
     if (triggerType === "stage_changed") return { stage: triggerStage };
     if (triggerType === "inactivity_days") return { days: triggerDays };
     return {};
+  }
+
+  async function sendStepTest(index: number) {
+    const step = steps[index];
+    if (!supabase || !step) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("crm-content-test", {
+        body: {
+          subject: step.subject,
+          preheader: step.preheader,
+          body: step.message,
+          ctaLabel: step.ctaLabel,
+          ctaUrl: step.ctaUrl,
+        },
+      });
+      if (error) throw error;
+      toast.success(`Teste enviado para ${(data as { to?: string }).to ?? "o seu e-mail"}.`);
+    } catch (reason) {
+      let message = reason instanceof Error ? reason.message : "Não foi possível enviar o teste.";
+      const context = (reason as { context?: unknown } | null)?.context;
+      if (context instanceof Response) {
+        const body = await context
+          .clone()
+          .json()
+          .catch(() => null);
+        if (body?.error) message = String(body.error);
+      }
+      toast.error(message);
+    }
   }
 
   async function save() {
@@ -196,17 +253,27 @@ export function CadenceBuilder({ cadenceId }: { cadenceId?: string }) {
         if (error) throw error;
         id = data.id;
       }
-      const { error: stepsError } = await supabase.from("cadence_steps").insert(
-        steps.map((s, index) => ({
-          cadence_id: id,
-          step_order: index + 1,
-          day_offset: s.dayOffset,
-          time_of_day: s.timeOfDay || null,
-          channel: s.channel,
-          subject: s.subject.trim() || null,
-          message: s.message,
+      const baseRows = steps.map((s, index) => ({
+        cadence_id: id,
+        step_order: index + 1,
+        day_offset: s.dayOffset,
+        time_of_day: s.timeOfDay || null,
+        channel: s.channel,
+        subject: s.subject.trim() || null,
+        message: s.message,
+      }));
+      let { error: stepsError } = await supabase.from("cadence_steps").insert(
+        baseRows.map((row, index) => ({
+          ...row,
+          preheader: steps[index]?.preheader.trim() || null,
+          cta_label: steps[index]?.ctaLabel.trim() || null,
+          cta_url: steps[index]?.ctaUrl.trim() || null,
         })),
       );
+      // Sem a migration 023 as colunas novas não existem: salva só o básico.
+      if (stepsError && /preheader|cta_/.test(stepsError.message)) {
+        ({ error: stepsError } = await supabase.from("cadence_steps").insert(baseRows));
+      }
       if (stepsError) throw stepsError;
       toast.success("Cadência salva.");
       void navigate({ to: "/automations" });
@@ -354,18 +421,64 @@ export function CadenceBuilder({ cadenceId }: { cadenceId?: string }) {
               )}
             </div>
             {step.channel === "email" && (
-              <Input
-                placeholder="Assunto do e-mail"
-                value={step.subject}
-                onChange={(e) => updateStep(index, { subject: e.target.value })}
-              />
+              <>
+                <Input
+                  placeholder="Assunto do e-mail (pode usar {{nome}})"
+                  value={step.subject}
+                  onChange={(e) => updateStep(index, { subject: e.target.value })}
+                />
+                <Input
+                  placeholder="Texto de prévia (aparece ao lado do assunto)"
+                  value={step.preheader}
+                  onChange={(e) => updateStep(index, { preheader: e.target.value })}
+                />
+              </>
             )}
             <textarea
-              placeholder="Mensagem (use {{nome}} para o primeiro nome do contato)"
+              placeholder={
+                step.channel === "email"
+                  ? "Texto do e-mail. {{nome}} = primeiro nome; **negrito**; [texto](https://link); listas com “- ”"
+                  : "Mensagem (use {{nome}} para o primeiro nome do contato)"
+              }
               className="min-h-20 w-full rounded-md border bg-background p-3 text-sm"
               value={step.message}
               onChange={(e) => updateStep(index, { message: e.target.value })}
             />
+            {step.channel === "email" && (
+              <>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <Input
+                    placeholder="Botão (texto), opcional"
+                    value={step.ctaLabel}
+                    onChange={(e) => updateStep(index, { ctaLabel: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Botão (link https://…)"
+                    value={step.ctaUrl}
+                    onChange={(e) => updateStep(index, { ctaUrl: e.target.value })}
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setPreviewIndex(index)}
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Pré-visualizar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={!step.subject.trim() || !step.message.trim()}
+                    onClick={() => void sendStepTest(index)}
+                  >
+                    <Mail className="h-3.5 w-3.5" /> Enviar teste para mim
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         ))}
       </div>
@@ -378,6 +491,38 @@ export function CadenceBuilder({ cadenceId }: { cadenceId?: string }) {
           <StartCadenceDialog cadenceId={cadenceId} cadenceName={name} defaultFilters={audience} />
         )}
       </div>
+
+      {previewIndex !== null && steps[previewIndex] && (
+        <Dialog open onOpenChange={(isOpen) => !isOpen && setPreviewIndex(null)}>
+          <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Pré-visualização do e-mail</DialogTitle>
+              <DialogDescription>Nome de exemplo: Maria.</DialogDescription>
+            </DialogHeader>
+            <iframe
+              title="Pré-visualização do e-mail"
+              className="h-[60vh] w-full rounded-md border bg-white"
+              srcDoc={renderEmailHtml({
+                heading: (steps[previewIndex].subject || "Assunto").replaceAll("{{nome}}", "Maria"),
+                bodyText: (steps[previewIndex].message || "Texto do e-mail").replaceAll(
+                  "{{nome}}",
+                  "Maria",
+                ),
+                ...(steps[previewIndex].preheader
+                  ? { preheader: steps[previewIndex].preheader }
+                  : {}),
+                ...(steps[previewIndex].ctaLabel && steps[previewIndex].ctaUrl
+                  ? {
+                      ctaLabel: steps[previewIndex].ctaLabel,
+                      ctaUrl: steps[previewIndex].ctaUrl,
+                    }
+                  : {}),
+                unsubscribeUrl: "#",
+              })}
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

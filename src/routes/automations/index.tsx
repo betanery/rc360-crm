@@ -26,8 +26,7 @@ import {
 import { shortDate, useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
-import { audienceFiltersFromJson } from "@/components/automations/AudienceFilterPicker";
-import { StartCadenceDialog } from "@/components/automations/StartCadenceDialog";
+import { CadencesPanel } from "@/components/automations/CadencesPanel";
 
 export const Route = createFileRoute("/automations/")({ component: AutomacoesPage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
@@ -229,19 +228,6 @@ function AutomacoesPage() {
       return;
     }
     void load();
-  }
-
-  async function toggleCadenceActive(cadence: CadenceRow) {
-    if (!supabase) return;
-    const { error } = await supabase
-      .from("cadences")
-      .update({ active: !cadence.active })
-      .eq("id", cadence.id);
-    if (error) {
-      toast.error(error.message);
-      return;
-    }
-    void loadCadences();
   }
 
   return (
@@ -450,81 +436,8 @@ function AutomacoesPage() {
           </div>
         </TabsContent>
 
-        <TabsContent value="cadencias" className="space-y-4">
-          <div className="flex justify-end">
-            <Button asChild disabled={!supabase}>
-              <Link to="/automations/cadences/new">
-                <Plus /> Nova cadência
-              </Link>
-            </Button>
-          </div>
-
-          {!supabase && (
-            <p className="rounded-lg border bg-muted/40 p-3 text-sm text-muted-foreground">
-              Modo demonstração: conecte o Supabase para criar e gerenciar cadências.
-            </p>
-          )}
-
-          <div className="space-y-3">
-            {cadencesLoading ? (
-              <p className="text-sm text-muted-foreground">Carregando cadências…</p>
-            ) : cadences.length ? (
-              cadences.map((cadence) => (
-                <div
-                  key={cadence.id}
-                  className="flex flex-wrap items-center justify-between gap-4 rounded-xl border bg-card p-4"
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/8 text-primary">
-                      <Rocket className="h-5 w-5" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{cadence.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {triggerLabel[cadence.trigger_type] ?? cadence.trigger_type} ·{" "}
-                        {cadence.step_count} etapa(s)
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge variant={cadence.active ? "default" : "outline"}>
-                      {cadence.active ? "Ativa" : "Inativa"}
-                    </Badge>
-                    <StartCadenceDialog
-                      cadenceId={cadence.id}
-                      cadenceName={cadence.name}
-                      defaultFilters={audienceFiltersFromJson(cadence.audience_filters)}
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => void toggleCadenceActive(cadence)}
-                    >
-                      {cadence.active ? (
-                        <>
-                          <Pause className="h-3.5 w-3.5" /> Desativar
-                        </>
-                      ) : (
-                        <>
-                          <Play className="h-3.5 w-3.5" /> Ativar
-                        </>
-                      )}
-                    </Button>
-                    <Button size="sm" variant="outline" asChild>
-                      <Link
-                        to="/automations/cadences/$cadenceId"
-                        params={{ cadenceId: cadence.id }}
-                      >
-                        Editar
-                      </Link>
-                    </Button>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground">Nenhuma cadência criada ainda.</p>
-            )}
-          </div>
+        <TabsContent value="cadencias">
+          <CadencesPanel />
         </TabsContent>
       </Tabs>
     </div>

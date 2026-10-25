@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ContentRouteImport } from './routes/content'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as OpportunitiesRouteImport } from './routes/opportunities'
 import { Route as PipelineRouteImport } from './routes/pipeline'
@@ -32,6 +33,11 @@ import { Route as AutomationsCadencesNewRouteImport } from './routes/automations
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContentRoute = ContentRouteImport.update({
+  id: '/content',
+  path: '/content',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -128,6 +134,7 @@ const AutomationsCadencesNewRoute = AutomationsCadencesNewRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/content': typeof ContentRoute
   '/dashboard': typeof DashboardRoute
   '/opportunities': typeof OpportunitiesRoute
   '/pipeline': typeof PipelineRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/content': typeof ContentRoute
   '/dashboard': typeof DashboardRoute
   '/opportunities': typeof OpportunitiesRoute
   '/pipeline': typeof PipelineRoute
@@ -171,6 +179,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/content': typeof ContentRoute
   '/dashboard': typeof DashboardRoute
   '/opportunities': typeof OpportunitiesRoute
   '/pipeline': typeof PipelineRoute
@@ -194,6 +203,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/content'
     | '/dashboard'
     | '/opportunities'
     | '/pipeline'
@@ -215,6 +225,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/content'
     | '/dashboard'
     | '/opportunities'
     | '/pipeline'
@@ -236,6 +247,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/content'
     | '/dashboard'
     | '/opportunities'
     | '/pipeline'
@@ -258,6 +270,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ContentRoute: typeof ContentRoute
   DashboardRoute: typeof DashboardRoute
   OpportunitiesRoute: typeof OpportunitiesRoute
   PipelineRoute: typeof PipelineRoute
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/content': {
+      id: '/content'
+      path: '/content'
+      fullPath: '/content'
+      preLoaderRoute: typeof ContentRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -418,6 +438,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ContentRoute: ContentRoute,
   DashboardRoute: DashboardRoute,
   OpportunitiesRoute: OpportunitiesRoute,
   PipelineRoute: PipelineRoute,
