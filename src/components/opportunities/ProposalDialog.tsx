@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useAuth } from "@/lib/auth";
 import { useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
 import {
@@ -396,6 +397,7 @@ export function ProposalDialog({
   onClose: () => void;
 }) {
   const { moveOpportunity } = useCRM();
+  const { profile } = useAuth();
   const [template, setTemplate] = useState<ProposalTemplate>("executiva");
   const [content, setContent] = useState<ProposalContent | null>(null);
   const [channel, setChannel] = useState<"whatsapp" | "email">("whatsapp");
@@ -417,7 +419,9 @@ export function ProposalDialog({
     setApproved(false);
     setChannel(contact.phone ? "whatsapp" : "email");
     setMessage(
-      `Olá ${contact.name.split(" ")[0] ?? contact.name}! Segue a proposta personalizada da RC360 em PDF. Qualquer dúvida, é só chamar.`,
+      `Olá ${contact.name.split(" ")[0] ?? contact.name}! Segue a proposta personalizada da RC360 em PDF. Qualquer dúvida, é só chamar.${
+        profile?.signature ? `\n\n${profile.signature}` : ""
+      }`,
     );
     setProductId("");
     const year = new Date().getFullYear();
@@ -537,6 +541,13 @@ export function ProposalDialog({
     );
   }
 
+  // Assinatura do PDF vem do perfil de quem está enviando.
+  const signed = (c: ProposalContent): ProposalContent => ({
+    ...c,
+    signerName: profile?.fullName ?? "",
+    signerTitle: profile?.jobTitle ?? "",
+  });
+
   const patch = (changes: Partial<ProposalContent>) =>
     setContent((current) => (current ? { ...current, ...changes } : current));
 
@@ -546,7 +557,7 @@ export function ProposalDialog({
     if (!content) return;
     setBusy("preview");
     try {
-      const blob = await buildProposalPdf(template, content);
+      const blob = await buildProposalPdf(template, signed(content));
       setPreviewUrl((previous) => {
         if (previous) URL.revokeObjectURL(previous);
         return URL.createObjectURL(blob);
@@ -573,7 +584,7 @@ export function ProposalDialog({
     }
     setBusy("send");
     try {
-      const blob = await buildProposalPdf(template, content);
+      const blob = await buildProposalPdf(template, signed(content));
       const { data: orgId, error: orgError } = await supabase.rpc("current_organization_id");
       if (orgError || !orgId) throw orgError ?? new Error("Organização não encontrada.");
 
@@ -589,7 +600,7 @@ export function ProposalDialog({
         opportunity_id: opportunity.id,
         contact_id: contact.id,
         template,
-        content,
+        content: signed(content),
         total: content.price,
         valid_until: content.validUntil || null,
         pdf_path: pdfPath,

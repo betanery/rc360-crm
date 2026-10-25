@@ -57,6 +57,9 @@ export interface ProposalContent {
   special: string;
   startCondition: string;
   priceNote: string;
+  // Assinatura do PDF (vem do perfil de quem envia). Em branco: assinatura padrão.
+  signerName?: string;
+  signerTitle?: string;
 }
 
 // Identidade visual RC360 (Manual de Identidade Visual, set/2026).
@@ -434,11 +437,18 @@ export async function buildProposalPdf(
     y += 12;
     font(SERIF, "bold", 13);
     ink(NAVY);
-    doc.text("Roberta Cardoso", PAGE_W / 2, y, { align: "center" });
+    doc.text(c.signerName?.trim() || "Roberta Cardoso", PAGE_W / 2, y, { align: "center" });
     y += 5.5;
     font(SANS, "normal", 8.5);
     ink(GRAPHITE);
-    doc.text("RC360 | Desenvolvimento Empresarial", PAGE_W / 2, y, { align: "center" });
+    doc.text(
+      c.signerTitle?.trim()
+        ? `${c.signerTitle.trim()} | RC360 Desenvolvimento Empresarial`
+        : "RC360 | Desenvolvimento Empresarial",
+      PAGE_W / 2,
+      y,
+      { align: "center" },
+    );
     y += 9;
     if (tagline) {
       font(SANS, "normal", 8.5);

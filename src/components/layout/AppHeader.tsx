@@ -1,10 +1,11 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { AlertTriangle, Bell, LogOut, Menu, MailWarning, Search } from "lucide-react";
+import { AlertTriangle, Bell, LogOut, Menu, MailWarning, Search, UserCog } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { isSupabaseConfigured, supabase } from "@/lib/supabase";
 import { shortDate, useCRM } from "@/lib/crm-data";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Avatar, ProfileDialog } from "@/components/layout/ProfileDialog";
 
 const TITLES: Record<string, string> = {
   "/": "Dashboard",
@@ -22,11 +23,16 @@ interface AppHeaderProps {
 export function AppHeader({ onMenuClick }: AppHeaderProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const title = TITLES[pathname] ?? "RC360 CRM";
-  const { user, signOut } = useAuth();
+  const { user, profile, signOut, recovering } = useAuth();
   const { tasks, contacts } = useCRM();
-  const initials = user?.email?.slice(0, 2).toUpperCase() ?? "RC";
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const [failedAutomations, setFailedAutomations] = useState(0);
+  const [failedCount, setFailedCount] = useState(0);
+  // Preferências do perfil: o que aparece no sino (ligado por padrão).
+  const showOverdue = profile?.notificationPrefs.overdueTasks !== false;
+  const showFailed = profile?.notificationPrefs.failedAutomations !== false;
+  const failedAutomations = showFailed ? failedCount : 0;
 
   useEffect(() => {
     if (!supabase) return;
@@ -35,19 +41,21 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
       .select("id", { count: "exact", head: true })
       .eq("status", "failed")
       .then(({ count, error }) => {
-        if (!error) setFailedAutomations(count ?? 0);
+        if (!error) setFailedCount(count ?? 0);
       });
   }, []);
 
-  const overdueTasks = tasks
-    .filter((t) => t.status === "Pendente" && new Date(t.dueAt) < new Date())
-    .sort((a, b) => +new Date(a.dueAt) - +new Date(b.dueAt));
+  const overdueTasks = showOverdue
+    ? tasks
+        .filter((t) => t.status === "Pendente" && new Date(t.dueAt) < new Date())
+        .sort((a, b) => +new Date(a.dueAt) - +new Date(b.dueAt))
+    : [];
   const totalNotifications = overdueTasks.length + failedAutomations;
 
   // Guarda no navegador o que já foi visto, pra bolinha só contar o que
   // é novo desde a última vez que o sino foi aberto — sem isso, ela
   // nunca some mesmo depois de já ter olhado.
-  const SEEN_KEY = "rc360_notifications_seen";
+  const SEEN_KEY = `rc360_notifications_seen:${user?.id ?? ""}`;
   const [seen, setSeen] = useState<{ taskIds: string[]; failedCount: number }>(() => {
     try {
       const raw = localStorage.getItem(SEEN_KEY);
@@ -181,22 +189,44 @@ export function AppHeader({ onMenuClick }: AppHeaderProps) {
           </PopoverContent>
         </Popover>
 
-        {/* Avatar placeholder */}
-        <div
-          className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-semibold text-primary-foreground"
-          aria-label="Perfil do usuário"
-        >
-          {initials}
-        </div>
+        <Popover open={menuOpen} onOpenChange={setMenuOpen}>
+          <PopoverTrigger asChild>
+            <button className="rounded-full" aria-label="Perfil do usuário">
+              <Avatar url={profile?.avatarUrl} name={profile?.fullName} email={user?.email} />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-64 p-2">
+            <div className="px-2 pb-2 pt-1">
+              <p className="truncate text-sm font-semibold">
+                {profile?.fullName || user?.email || "Usuário"}
+              </p>
+              {user?.email && (
+                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+              )}
+            </div>
+            {isSupabaseConfigured && (
+              <>
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setProfileOpen(true);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                >
+                  <UserCog className="h-4 w-4" /> Meu perfil
+                </button>
+                <button
+                  onClick={() => void signOut()}
+                  className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-muted"
+                >
+                  <LogOut className="h-4 w-4" /> Sair
+                </button>
+              </>
+            )}
+          </PopoverContent>
+        </Popover>
         {isSupabaseConfigured && (
-          <button
-            onClick={() => void signOut()}
-            className="rounded-lg p-2 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            aria-label="Sair"
-            title="Sair"
-          >
-            <LogOut className="h-5 w-5" />
-          </button>
+          <ProfileDialog open={profileOpen || recovering} onClose={() => setProfileOpen(false)} />
         )}
       </div>
     </header>
