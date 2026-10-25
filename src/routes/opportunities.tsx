@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Pencil, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,9 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { money, products as staticProducts, shortDate, useCRM } from "@/lib/crm-data";
+import { money, shortDate, useCRM } from "@/lib/crm-data";
+import { useActiveProducts } from "@/lib/use-products";
+import { EditOpportunityDialog } from "@/components/opportunities/EditOpportunityDialog";
 import { DeleteOpportunityDialog } from "@/components/opportunities/DeleteOpportunityDialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
@@ -28,41 +30,12 @@ function OportunidadesPage() {
   const [product, setProduct] = useState(ALL);
   const [status, setStatus] = useState<typeof ALL | StatusFilter>(ALL);
   const [open, setOpen] = useState(false);
-  const [activeProducts, setActiveProducts] = useState<string[]>(staticProducts);
-  const [prices, setPrices] = useState<Record<string, number>>({});
+  const { names: activeProducts, prices } = useActiveProducts();
   const [formContactId, setFormContactId] = useState("");
   const [formProduct, setFormProduct] = useState("");
   const [formValue, setFormValue] = useState("");
   const [deleteId, setDeleteId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!supabase) return;
-    const client = supabase;
-    void (async () => {
-      // Com a coluna de preço (migration 019); sem ela, volta só aos nomes.
-      let { data, error } = await client
-        .from("products")
-        .select("name,price")
-        .eq("active", true)
-        .order("name", { ascending: true });
-      if (error) {
-        const fallback = await client
-          .from("products")
-          .select("name")
-          .eq("active", true)
-          .order("name", { ascending: true });
-        data = fallback.data as typeof data;
-        error = fallback.error;
-      }
-      if (error || !data?.length) return;
-      setActiveProducts(data.map((p) => p.name));
-      const found: Record<string, number> = {};
-      for (const row of data as { name: string; price?: number | null }[]) {
-        if (row.price !== null && row.price !== undefined) found[row.name] = Number(row.price);
-      }
-      setPrices(found);
-    })();
-  }, []);
+  const [editId, setEditId] = useState<string | null>(null);
 
   // Escolher o produto traz o valor cadastrado nele (continua editável).
   function chooseProduct(name: string) {
@@ -302,7 +275,18 @@ function OportunidadesPage() {
                         <Button
                           size="icon"
                           variant="ghost"
-                          className="ml-2 text-destructive hover:text-destructive"
+                          className="ml-1"
+                          onClick={() => setEditId(o.id)}
+                          aria-label="Editar oportunidade"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {supabase && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-destructive hover:text-destructive"
                           onClick={() => setDeleteId(o.id)}
                           aria-label="Excluir oportunidade"
                         >
@@ -320,6 +304,10 @@ function OportunidadesPage() {
           <p className="p-6 text-sm text-muted-foreground">Nenhuma oportunidade neste filtro.</p>
         )}
       </div>
+      <EditOpportunityDialog
+        opportunity={opportunities.find((o) => o.id === editId) ?? null}
+        onClose={() => setEditId(null)}
+      />
       <DeleteOpportunityDialog
         opportunity={opportunities.find((o) => o.id === deleteId) ?? null}
         onClose={() => setDeleteId(null)}

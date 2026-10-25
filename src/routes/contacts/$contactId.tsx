@@ -48,6 +48,7 @@ import { TagManager } from "@/components/contacts/TagManager";
 import { ObjectionManager } from "@/components/opportunities/ObjectionManager";
 import { ProposalDialog } from "@/components/opportunities/ProposalDialog";
 import { MeetingDialog } from "@/components/contacts/MeetingDialog";
+import { EditOpportunityDialog } from "@/components/opportunities/EditOpportunityDialog";
 import { DeleteOpportunityDialog } from "@/components/opportunities/DeleteOpportunityDialog";
 import { toast } from "sonner";
 
@@ -104,6 +105,7 @@ function ContatoDetalhePage() {
   const [proposalOpportunityId, setProposalOpportunityId] = useState<string | null>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [deleteOpportunityId, setDeleteOpportunityId] = useState<string | null>(null);
+  const [editOpportunityId, setEditOpportunityId] = useState<string | null>(null);
   const [meeting, setMeeting] = useState<{
     id: string;
     summary: string;
@@ -749,6 +751,16 @@ function ContatoDetalhePage() {
                       <Button
                         size="icon"
                         variant="ghost"
+                        onClick={() => setEditOpportunityId(o.id)}
+                        aria-label="Editar oportunidade"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {supabase && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
                         className="text-destructive hover:text-destructive"
                         onClick={() => setDeleteOpportunityId(o.id)}
                         aria-label="Excluir oportunidade"
@@ -816,6 +828,11 @@ function ContatoDetalhePage() {
           )}
         </CardContent>
       </Card>
+
+      <EditOpportunityDialog
+        opportunity={contactOpportunities.find((o) => o.id === editOpportunityId) ?? null}
+        onClose={() => setEditOpportunityId(null)}
+      />
 
       <DeleteOpportunityDialog
         opportunity={contactOpportunities.find((o) => o.id === deleteOpportunityId) ?? null}

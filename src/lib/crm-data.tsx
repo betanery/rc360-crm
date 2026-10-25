@@ -281,6 +281,10 @@ interface CRMContextValue {
   ) => Promise<void>;
   moveOpportunity: (id: string, stage: Stage, lostReason?: string) => Promise<void>;
   deleteOpportunity: (id: string) => Promise<void>;
+  updateOpportunity: (
+    id: string,
+    changes: { product: string; value: number; nextAction: string; nextActionAt: string },
+  ) => Promise<void>;
   addOpportunityObjection: (opportunityId: string, tagName: string) => Promise<void>;
   removeOpportunityObjection: (opportunityId: string, tagName: string) => Promise<void>;
   updateOpportunityDecisionMap: (opportunityId: string, decisionMap: string) => Promise<void>;
@@ -743,6 +747,25 @@ export function CRMProvider({ children }: { children: ReactNode }) {
                   lostReason: stage === "Perdido" ? (lostReason ?? item.lostReason) : undefined,
                 }
               : item,
+          ),
+        );
+      },
+      updateOpportunity: async (id, changes) => {
+        if (supabase) {
+          const { error: updateError } = await supabase
+            .from("opportunities")
+            .update({
+              product: changes.product,
+              value: changes.value,
+              next_action: changes.nextAction.trim(),
+              next_action_at: changes.nextActionAt,
+            })
+            .eq("id", id);
+          if (updateError) throw updateError;
+        }
+        setOpportunities((items) =>
+          items.map((item) =>
+            item.id === id ? { ...item, ...changes, nextAction: changes.nextAction.trim() } : item,
           ),
         );
       },
