@@ -74,6 +74,7 @@ export function CadenceBuilder({ cadenceId }: { cadenceId?: string }) {
     supabase
       .from("tags")
       .select("name")
+      .neq("kind", "objection")
       .order("name", { ascending: true })
       .then(({ data, error }) => {
         if (!error && data) setAvailableTags(data.map((t) => t.name as string));

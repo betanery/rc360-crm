@@ -28,6 +28,7 @@ export function ObjectionManager({
     supabase
       .from("tags")
       .select("name")
+      .eq("kind", "objection")
       .order("name", { ascending: true })
       .then(({ data, error }) => {
         if (!error && data) setAllTags(data.map((t) => t.name as string));

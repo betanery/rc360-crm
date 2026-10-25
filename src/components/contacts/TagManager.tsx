@@ -22,6 +22,7 @@ export function TagManager({ contactId, tags }: { contactId: string; tags: strin
     supabase
       .from("tags")
       .select("name")
+      .neq("kind", "objection")
       .order("name", { ascending: true })
       .then(({ data, error }) => {
         if (!error && data) setAllTags(data.map((t) => t.name as string));

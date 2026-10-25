@@ -21,23 +21,49 @@ const json = (body: unknown, status = 200) =>
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-async function sendWhatsApp(phone: string, name: string, message: string) {
+async function sendWhatsApp(phone: string, name: string, message: string, fileUrl?: string) {
   if (!BOTCONVERSA_KEY) throw new Error("BOTCONVERSA_API_KEY not configured");
   const subscriberId = await findOrCreateBotConversaSubscriber(phone, name);
 
-  const sent = await fetch(`${BOT_BASE}/subscriber/${subscriberId}/send_message/`, {
-    method: "POST",
-    headers: { "API-KEY": BOTCONVERSA_KEY, "Content-Type": "application/json" },
-    body: JSON.stringify({ type: "text", value: message }),
-  });
-  if (!sent.ok) throw new Error(`BotConversa send failed: ${sent.status}`);
+  const post = async (type: "text" | "file", value: string) => {
+    const sent = await fetch(`${BOT_BASE}/subscriber/${subscriberId}/send_message/`, {
+      method: "POST",
+      headers: { "API-KEY": BOTCONVERSA_KEY, "Content-Type": "application/json" },
+      body: JSON.stringify({ type, value }),
+    });
+    if (!sent.ok) throw new Error(`BotConversa send failed: ${sent.status}`);
+  };
+
+  // O PDF vai primeiro (é o que importa); se falhar, nada foi enviado e o
+  // retry não duplica o texto.
+  if (fileUrl) await post("file", fileUrl);
+  await post("text", message);
+}
+
+// Proposta em PDF: o caminho fica em automation_queue.metadata.pdf_path
+// (bucket privado "proposals"). Sem pdf_path, o envio segue como antes.
+async function signedProposalUrl(db: ReturnType<typeof createClient>, path: string) {
+  const { data, error } = await db.storage.from("proposals").createSignedUrl(path, 60 * 60);
+  if (error || !data?.signedUrl) throw new Error(`Proposta PDF indisponível: ${error?.message}`);
+  return data.signedUrl;
+}
+
+async function proposalAttachment(db: ReturnType<typeof createClient>, path: string, name: string) {
+  const { data, error } = await db.storage.from("proposals").download(path);
+  if (error || !data) throw new Error(`Proposta PDF indisponível: ${error?.message}`);
+  const bytes = new Uint8Array(await data.arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return { filename: name, content: btoa(binary) };
 }
 
 async function sendEmail(
   email: string,
   subject: string,
   message: string,
-  _metadata: Record<string, unknown>,
+  attachments: { filename: string; content: string }[] = [],
 ) {
   if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
   const content = { heading: subject, bodyText: message };
@@ -53,6 +79,7 @@ async function sendEmail(
       subject,
       html: renderEmailHtml(content),
       text: renderEmailText(content),
+      ...(attachments.length ? { attachments } : {}),
       ...(RESEND_REPLY_TO ? { reply_to: RESEND_REPLY_TO } : {}),
     }),
   });
@@ -133,7 +160,13 @@ Deno.serve(async (req) => {
             .eq("id", item.id);
           continue;
         }
-        await sendWhatsApp(contact.phone, contact.name || "", item.message || "");
+        const pdfPath = typeof item.metadata?.pdf_path === "string" ? item.metadata.pdf_path : null;
+        await sendWhatsApp(
+          contact.phone,
+          contact.name || "",
+          item.message || "",
+          pdfPath ? await signedProposalUrl(db, pdfPath) : undefined,
+        );
         whatsappSentThisRun++;
         if (whatsappSentThisRun < WHATSAPP_MAX_PER_RUN) {
           await sleep(3000 + Math.random() * 5000);
@@ -147,11 +180,14 @@ Deno.serve(async (req) => {
             .eq("id", item.id);
           continue;
         }
+        const pdfPath = typeof item.metadata?.pdf_path === "string" ? item.metadata.pdf_path : null;
+        const pdfName =
+          typeof item.metadata?.pdf_name === "string" ? item.metadata.pdf_name : "proposta.pdf";
         await sendEmail(
           contact.email,
           item.subject || "RC360",
           item.message || "",
-          item.metadata || {},
+          pdfPath ? [await proposalAttachment(db, pdfPath, pdfName)] : [],
         );
       }
 

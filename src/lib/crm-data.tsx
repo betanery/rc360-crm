@@ -726,16 +726,26 @@ export function CRMProvider({ children }: { children: ReactNode }) {
           );
           return;
         }
-        const { data: tag, error: tagError } = await supabase
+        const { data: existing, error: lookupError } = await supabase
           .from("tags")
-          .upsert({ name: trimmed }, { onConflict: "organization_id,name" })
           .select("id")
-          .single();
-        if (tagError) throw tagError;
+          .eq("name", trimmed)
+          .maybeSingle();
+        if (lookupError) throw lookupError;
+        let tagId = existing?.id as string | undefined;
+        if (!tagId) {
+          const { data: created, error: tagError } = await supabase
+            .from("tags")
+            .insert({ name: trimmed, kind: "objection" })
+            .select("id")
+            .single();
+          if (tagError) throw tagError;
+          tagId = created.id as string;
+        }
         const { error: linkError } = await supabase
           .from("opportunity_objections")
           .upsert(
-            { opportunity_id: opportunityId, tag_id: tag.id },
+            { opportunity_id: opportunityId, tag_id: tagId },
             { onConflict: "opportunity_id,tag_id", ignoreDuplicates: true },
           );
         if (linkError) throw linkError;

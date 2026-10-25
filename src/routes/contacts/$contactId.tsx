@@ -45,17 +45,8 @@ import { OwnerField } from "@/components/contacts/OwnerField";
 import { QualificationField } from "@/components/contacts/QualificationField";
 import { TagManager } from "@/components/contacts/TagManager";
 import { ObjectionManager } from "@/components/opportunities/ObjectionManager";
+import { ProposalDialog } from "@/components/opportunities/ProposalDialog";
 import { toast } from "sonner";
-
-function fillProposalTemplate(template: string, name: string, product: string, value: string) {
-  return template
-    .replaceAll("{{nome}}", name.split(" ")[0] ?? name)
-    .replaceAll("{{produto}}", product)
-    .replaceAll("{{valor}}", value);
-}
-
-const DEFAULT_PROPOSAL_TEMPLATE =
-  "Olá {{nome}}! Segue a proposta customizada para {{produto}}, no valor de {{valor}}. Qualquer dúvida, é só chamar.";
 
 export const Route = createFileRoute("/contacts/$contactId")({ component: ContatoDetalhePage });
 const fieldClass = "h-10 w-full rounded-md border bg-background px-3 text-sm";
@@ -94,7 +85,6 @@ function ContatoDetalhePage() {
     updateContact,
     deleteContact,
     addTask,
-    moveOpportunity,
     updateOpportunityDecisionMap,
   } = useCRM();
   const contact = contacts.find((c) => c.id === contactId);
@@ -109,9 +99,6 @@ function ContatoDetalhePage() {
   const [editingDecisionMapId, setEditingDecisionMapId] = useState<string | null>(null);
   const [decisionMapDraft, setDecisionMapDraft] = useState("");
   const [proposalOpportunityId, setProposalOpportunityId] = useState<string | null>(null);
-  const [proposalMessage, setProposalMessage] = useState("");
-  const [proposalChannel, setProposalChannel] = useState<"whatsapp" | "email">("whatsapp");
-  const [sendingProposal, setSendingProposal] = useState(false);
   const [research, setResearch] = useState<LeadResearch | null>(null);
   const [researchLoading, setResearchLoading] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -286,42 +273,6 @@ function ContatoDetalhePage() {
       toast.error(
         reason instanceof Error ? reason.message : "Não foi possível salvar o mapa de decisão.",
       );
-    }
-  }
-
-  function openProposalDialog(opportunityId: string, product: string, value: number) {
-    setProposalOpportunityId(opportunityId);
-    setProposalChannel(contact?.phone ? "whatsapp" : "email");
-    setProposalMessage(
-      fillProposalTemplate(
-        DEFAULT_PROPOSAL_TEMPLATE,
-        contact?.name ?? "",
-        product,
-        money.format(value),
-      ),
-    );
-  }
-
-  async function sendProposal() {
-    if (!supabase || !contact || !proposalOpportunityId) return;
-    setSendingProposal(true);
-    try {
-      const { error } = await supabase.rpc("enqueue_automation", {
-        p_contact_id: contact.id,
-        p_opportunity_id: proposalOpportunityId,
-        p_channel: proposalChannel,
-        p_automation_type: "proposal",
-        p_message: proposalMessage,
-        p_subject: proposalChannel === "email" ? "Sua proposta" : null,
-      });
-      if (error) throw error;
-      await moveOpportunity(proposalOpportunityId, "Proposta enviada");
-      setProposalOpportunityId(null);
-      toast.success("Proposta enviada e etapa atualizada.");
-    } catch (reason) {
-      toast.error(reason instanceof Error ? reason.message : "Não foi possível enviar a proposta.");
-    } finally {
-      setSendingProposal(false);
     }
   }
 
@@ -726,7 +677,7 @@ function ContatoDetalhePage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => openProposalDialog(o.id, o.product, o.value)}
+                        onClick={() => setProposalOpportunityId(o.id)}
                       >
                         <Send className="h-3.5 w-3.5" /> Enviar proposta
                       </Button>
@@ -792,46 +743,15 @@ function ContatoDetalhePage() {
         </CardContent>
       </Card>
 
-      <Dialog
-        open={proposalOpportunityId !== null}
-        onOpenChange={(isOpen) => !isOpen && setProposalOpportunityId(null)}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Enviar proposta</DialogTitle>
-            <DialogDescription>
-              Revise a mensagem antes de enviar. Ao enviar, a oportunidade passa para "Proposta
-              enviada".
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-3">
-            <select
-              className={fieldClass}
-              value={proposalChannel}
-              onChange={(e) => setProposalChannel(e.target.value as "whatsapp" | "email")}
-            >
-              <option value="whatsapp">WhatsApp</option>
-              <option value="email">E-mail</option>
-            </select>
-            <textarea
-              className="min-h-32 w-full rounded-md border bg-background p-3 text-sm"
-              value={proposalMessage}
-              onChange={(e) => setProposalMessage(e.target.value)}
-            />
-            <Button
-              disabled={sendingProposal || !proposalMessage.trim()}
-              onClick={() => void sendProposal()}
-            >
-              {sendingProposal ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-              Enviar proposta
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ProposalDialog
+        opportunity={
+          proposalOpportunityId
+            ? (contactOpportunities.find((o) => o.id === proposalOpportunityId) ?? null)
+            : null
+        }
+        contact={contact}
+        onClose={() => setProposalOpportunityId(null)}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

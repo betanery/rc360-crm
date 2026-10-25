@@ -98,6 +98,8 @@ function ConfiguracoesPage() {
 
   const [tags, setTags] = useState<TagRow[]>([]);
   const [newTag, setNewTag] = useState("");
+  const [objections, setObjections] = useState<TagRow[]>([]);
+  const [newObjection, setNewObjection] = useState("");
 
   const [funnelStages, setFunnelStages] = useState<StageRow[]>([]);
   const [stagesAvailable, setStagesAvailable] = useState(true);
@@ -128,10 +130,15 @@ function ConfiguracoesPage() {
     if (!supabase) return;
     const { data, error } = await supabase
       .from("tags")
-      .select("id,name,color")
+      .select("id,name,color,kind")
       .order("name", { ascending: true });
-    if (error) toast.error(error.message);
-    else setTags((data ?? []) as TagRow[]);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    const rows = (data ?? []) as (TagRow & { kind: string })[];
+    setTags(rows.filter((row) => row.kind !== "objection"));
+    setObjections(rows.filter((row) => row.kind === "objection"));
   }
 
   async function loadStages() {
@@ -301,18 +308,23 @@ function ConfiguracoesPage() {
     }
   }
 
-  async function addTag(event: React.FormEvent<HTMLFormElement>) {
+  async function addTag(event: React.FormEvent<HTMLFormElement>, kind: "tag" | "objection") {
     event.preventDefault();
     if (!supabase) return;
-    const name = newTag.trim();
+    const name = (kind === "tag" ? newTag : newObjection).trim();
     if (!name) return;
-    const { error } = await supabase.from("tags").insert({ name });
+    const { error } = await supabase.from("tags").insert({ name, kind });
     if (error) {
-      toast.error(error.message.includes("duplicate") ? "Essa tag já existe." : error.message);
+      toast.error(
+        error.message.includes("duplicate")
+          ? `Já existe uma tag ou objeção com esse nome.`
+          : error.message,
+      );
       return;
     }
-    setNewTag("");
-    toast.success("Tag criada.");
+    if (kind === "tag") setNewTag("");
+    else setNewObjection("");
+    toast.success(kind === "tag" ? "Tag criada." : "Objeção criada.");
     void loadTags();
   }
 
@@ -532,7 +544,7 @@ function ConfiguracoesPage() {
             )}
             {supabase && (
               <>
-                <form onSubmit={addTag} className="flex gap-2">
+                <form onSubmit={(event) => void addTag(event, "tag")} className="flex gap-2">
                   <Input
                     value={newTag}
                     onChange={(e) => setNewTag(e.target.value)}
@@ -557,6 +569,54 @@ function ConfiguracoesPage() {
                   ))}
                   {!tags.length && (
                     <span className="text-sm text-muted-foreground">Nenhuma tag cadastrada.</span>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Tags className="h-5 w-5" />
+              Objeções
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!supabase && (
+              <p className="text-sm text-muted-foreground">
+                Modo demonstração: conecte o Supabase para gerenciar objeções.
+              </p>
+            )}
+            {supabase && (
+              <>
+                <form onSubmit={(event) => void addTag(event, "objection")} className="flex gap-2">
+                  <Input
+                    value={newObjection}
+                    onChange={(e) => setNewObjection(e.target.value)}
+                    placeholder="Nova objeção (ex.: Preço)"
+                  />
+                  <Button type="submit" size="icon" aria-label="Adicionar objeção">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </form>
+                <div className="flex flex-wrap gap-2">
+                  {objections.map((tag) => (
+                    <Badge key={tag.id} variant="secondary" className="gap-1 px-3 py-1">
+                      {tag.name}
+                      <button
+                        onClick={() => void deleteTag(tag.id)}
+                        aria-label={`Remover objeção ${tag.name}`}
+                        className="ml-1 rounded-full hover:text-destructive"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {!objections.length && (
+                    <span className="text-sm text-muted-foreground">
+                      Nenhuma objeção cadastrada.
+                    </span>
                   )}
                 </div>
               </>
