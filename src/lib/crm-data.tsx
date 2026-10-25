@@ -283,6 +283,11 @@ interface CRMContextValue {
   addOpportunityObjection: (opportunityId: string, tagName: string) => Promise<void>;
   removeOpportunityObjection: (opportunityId: string, tagName: string) => Promise<void>;
   updateOpportunityDecisionMap: (opportunityId: string, decisionMap: string) => Promise<void>;
+  updateOpportunityNextAction: (
+    opportunityId: string,
+    nextAction: string,
+    nextActionAt?: string,
+  ) => Promise<void>;
   toggleTask: (id: string) => Promise<void>;
   addTask: (task: Omit<Task, "id" | "status">) => Promise<void>;
   updateCart: (id: string, status: CartRecovery["status"]) => Promise<void>;
@@ -799,6 +804,31 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         }
         setOpportunities((items) =>
           items.map((item) => (item.id === opportunityId ? { ...item, decisionMap } : item)),
+        );
+      },
+      updateOpportunityNextAction: async (opportunityId, nextAction, nextActionAt) => {
+        const trimmed = nextAction.trim();
+        if (!trimmed) return;
+        if (supabase) {
+          const { error: updateError } = await supabase
+            .from("opportunities")
+            .update({
+              next_action: trimmed,
+              ...(nextActionAt ? { next_action_at: nextActionAt } : {}),
+            })
+            .eq("id", opportunityId);
+          if (updateError) throw updateError;
+        }
+        setOpportunities((items) =>
+          items.map((item) =>
+            item.id === opportunityId
+              ? {
+                  ...item,
+                  nextAction: trimmed,
+                  ...(nextActionAt ? { nextActionAt } : {}),
+                }
+              : item,
+          ),
         );
       },
       toggleTask: async (id) => {

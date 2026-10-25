@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import {
   ArrowLeft,
+  FileText,
   Instagram,
   Linkedin,
   Loader2,
@@ -46,6 +47,7 @@ import { QualificationField } from "@/components/contacts/QualificationField";
 import { TagManager } from "@/components/contacts/TagManager";
 import { ObjectionManager } from "@/components/opportunities/ObjectionManager";
 import { ProposalDialog } from "@/components/opportunities/ProposalDialog";
+import { MeetingDialog } from "@/components/contacts/MeetingDialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/contacts/$contactId")({ component: ContatoDetalhePage });
@@ -99,6 +101,12 @@ function ContatoDetalhePage() {
   const [editingDecisionMapId, setEditingDecisionMapId] = useState<string | null>(null);
   const [decisionMapDraft, setDecisionMapDraft] = useState("");
   const [proposalOpportunityId, setProposalOpportunityId] = useState<string | null>(null);
+  const [meetingOpen, setMeetingOpen] = useState(false);
+  const [meeting, setMeeting] = useState<{
+    id: string;
+    summary: string;
+    created_at: string;
+  } | null>(null);
   const [research, setResearch] = useState<LeadResearch | null>(null);
   const [researchLoading, setResearchLoading] = useState(false);
   const [sourcesOpen, setSourcesOpen] = useState(false);
@@ -133,6 +141,23 @@ function ContatoDetalhePage() {
       .then(({ data, error }) => {
         if (!error && data) setResearch(data as LeadResearch);
       });
+  }, [contactId]);
+
+  async function loadMeeting() {
+    if (!supabase) return;
+    const { data, error } = await supabase
+      .from("meeting_summaries")
+      .select("id,summary,created_at")
+      .eq("contact_id", contactId)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!error && data) setMeeting(data as { id: string; summary: string; created_at: string });
+  }
+
+  useEffect(() => {
+    void loadMeeting();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [contactId]);
 
   if (!contact) {
@@ -587,6 +612,42 @@ function ContatoDetalhePage() {
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-4 w-4" /> Reunião
+          </CardTitle>
+          {supabase && (
+            <Button size="sm" variant="outline" onClick={() => setMeetingOpen(true)}>
+              <Sparkles className="h-3.5 w-3.5" /> Preencher com transcrição
+            </Button>
+          )}
+        </CardHeader>
+        <CardContent className="space-y-1">
+          {meeting ? (
+            <>
+              <p className="whitespace-pre-line text-sm">{meeting.summary}</p>
+              <p className="text-xs text-muted-foreground">
+                Registrado em {shortDate(meeting.created_at)}
+              </p>
+            </>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Cole a transcrição de uma reunião para preencher dor, objeções, mapa de decisão,
+              tarefas e rascunho da proposta.
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      <MeetingDialog
+        open={meetingOpen}
+        onClose={() => setMeetingOpen(false)}
+        contact={contact}
+        opportunities={contactOpportunities}
+        onSaved={() => void loadMeeting()}
+      />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">

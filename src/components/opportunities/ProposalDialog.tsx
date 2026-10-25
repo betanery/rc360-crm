@@ -368,6 +368,24 @@ function contentFromProduct(
   return content;
 }
 
+interface MeetingDraft {
+  challenges?: TitledItem[];
+  objectives?: TitledItem[];
+  stakes?: string;
+  priority?: string;
+}
+
+// Aplica o rascunho extraído da reunião sobre o conteúdo do modelo.
+function withDraft(content: ProposalContent, draft: MeetingDraft | null): ProposalContent {
+  if (!draft) return content;
+  const next = { ...content };
+  if (draft.challenges?.length && next.challenges.length) next.challenges = draft.challenges;
+  if (draft.objectives?.length && next.objectives.length) next.objectives = draft.objectives;
+  if (draft.stakes?.trim()) next.stakes = draft.stakes.trim();
+  if (draft.priority?.trim() && !next.priority) next.priority = draft.priority.trim();
+  return next;
+}
+
 export function ProposalDialog({
   opportunity,
   contact,
@@ -387,6 +405,7 @@ export function ProposalDialog({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<CatalogProduct[]>([]);
   const [productId, setProductId] = useState("");
+  const [draft, setDraft] = useState<MeetingDraft | null>(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -402,9 +421,14 @@ export function ProposalDialog({
     );
     setProductId("");
     const year = new Date().getFullYear();
-    const finish = (count: number, products: CatalogProduct[]) => {
+    const finish = (
+      count: number,
+      products: CatalogProduct[],
+      meetingDraft: MeetingDraft | null,
+    ) => {
       if (cancelled) return;
       setCatalog(products);
+      setDraft(meetingDraft);
       const base = defaultsFor("executiva", {
         number: `${year}-${String(count + 1).padStart(3, "0")}`,
         date: today,
@@ -420,27 +444,38 @@ export function ProposalDialog({
       if (match) {
         setProductId(match.id);
         setTemplate(match.template);
-        setContent(contentFromProduct(match, base, match.template));
+        setContent(withDraft(contentFromProduct(match, base, match.template), meetingDraft));
       } else {
-        setContent(base);
+        setContent(withDraft(base, meetingDraft));
       }
     };
     if (!supabase) {
-      finish(0, []);
+      finish(0, [], null);
       return () => {
         cancelled = true;
       };
     }
     const client = supabase;
     void (async () => {
-      const [{ count }, catalogResult] = await Promise.all([
+      const [{ count }, catalogResult, meetingResult] = await Promise.all([
         client
           .from("proposals")
           .select("id", { count: "exact", head: true })
           .gte("created_at", `${year}-01-01`),
         // Sem a migration do catálogo a consulta falha: segue sem produtos.
         client.from("products").select(CATALOG_COLUMNS).eq("active", true).order("name"),
+        // Rascunho da última reunião; sem a tabela, a consulta falha e é ignorada.
+        client
+          .from("meeting_summaries")
+          .select("proposal_draft")
+          .eq("contact_id", contact.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
+      const meetingDraft = meetingResult.error
+        ? null
+        : ((meetingResult.data?.proposal_draft as MeetingDraft | undefined) ?? null);
       const products: CatalogProduct[] = catalogResult.error
         ? []
         : (catalogResult.data ?? []).map((row) => ({
@@ -460,7 +495,7 @@ export function ProposalDialog({
             paymentTerms: (row.payment_terms as string) ?? "",
             notes: (row.notes as string) ?? "",
           }));
-      finish(count ?? 0, products);
+      finish(count ?? 0, products, meetingDraft);
     })();
     return () => {
       cancelled = true;
@@ -473,7 +508,7 @@ export function ProposalDialog({
     const product = catalog.find((p) => p.id === id);
     if (!product || !content) return;
     setTemplate(product.template);
-    setContent(contentFromProduct(product, content, product.template));
+    setContent(withDraft(contentFromProduct(product, content, product.template), draft));
   }
 
   function changeTemplate(next: ProposalTemplate) {
@@ -481,21 +516,24 @@ export function ProposalDialog({
     setTemplate(next);
     const product = catalog.find((p) => p.id === productId);
     if (product) {
-      setContent(contentFromProduct(product, content, next));
+      setContent(withDraft(contentFromProduct(product, content, next), draft));
       return;
     }
     setContent(
-      defaultsFor(next, {
-        number: content.number,
-        date: content.date,
-        validUntil: content.validUntil,
-        clientName: content.clientName,
-        company: content.company,
-        decisionMaker: content.decisionMaker,
-        price: content.price,
-        payment: content.payment,
-        product: opportunity.product,
-      }),
+      withDraft(
+        defaultsFor(next, {
+          number: content.number,
+          date: content.date,
+          validUntil: content.validUntil,
+          clientName: content.clientName,
+          company: content.company,
+          decisionMaker: content.decisionMaker,
+          price: content.price,
+          payment: content.payment,
+          product: opportunity.product,
+        }),
+        draft,
+      ),
     );
   }
 
