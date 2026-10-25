@@ -48,6 +48,7 @@ import { TagManager } from "@/components/contacts/TagManager";
 import { ObjectionManager } from "@/components/opportunities/ObjectionManager";
 import { ProposalDialog } from "@/components/opportunities/ProposalDialog";
 import { MeetingDialog } from "@/components/contacts/MeetingDialog";
+import { Timeline } from "@/components/contacts/Timeline";
 import { EditOpportunityDialog } from "@/components/opportunities/EditOpportunityDialog";
 import { DeleteOpportunityDialog } from "@/components/opportunities/DeleteOpportunityDialog";
 import { toast } from "sonner";
@@ -104,6 +105,8 @@ function ContatoDetalhePage() {
   const [decisionMapDraft, setDecisionMapDraft] = useState("");
   const [proposalOpportunityId, setProposalOpportunityId] = useState<string | null>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
+  const [timelineKey, setTimelineKey] = useState(0);
+  const [proposalStatus, setProposalStatus] = useState<Record<string, string>>({});
   const [deleteOpportunityId, setDeleteOpportunityId] = useState<string | null>(null);
   const [editOpportunityId, setEditOpportunityId] = useState<string | null>(null);
   const [meeting, setMeeting] = useState<{
@@ -158,6 +161,28 @@ function ContatoDetalhePage() {
       .maybeSingle();
     if (!error && data) setMeeting(data as { id: string; summary: string; created_at: string });
   }
+
+  // Situação da última proposta de cada oportunidade (migration 024; sem ela, ignora).
+  useEffect(() => {
+    if (!supabase) return;
+    void supabase
+      .from("proposals")
+      .select("opportunity_id,viewed_at,accepted_at,created_at")
+      .eq("contact_id", contactId)
+      .order("created_at", { ascending: true })
+      .then(({ data, error }) => {
+        if (error) return;
+        const next: Record<string, string> = {};
+        for (const row of data ?? []) {
+          next[row.opportunity_id as string] = row.accepted_at
+            ? "Proposta aceita"
+            : row.viewed_at
+              ? "Proposta visualizada"
+              : "Proposta enviada";
+        }
+        setProposalStatus(next);
+      });
+  }, [contactId, timelineKey]);
 
   useEffect(() => {
     void loadMeeting();
@@ -650,8 +675,13 @@ function ContatoDetalhePage() {
         onClose={() => setMeetingOpen(false)}
         contact={contact}
         opportunities={contactOpportunities}
-        onSaved={() => void loadMeeting()}
+        onSaved={() => {
+          void loadMeeting();
+          setTimelineKey((key) => key + 1);
+        }}
       />
+
+      <Timeline contactId={contactId} refreshKey={timelineKey} />
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -736,6 +766,16 @@ function ContatoDetalhePage() {
                   <div className="flex items-center gap-3">
                     <div className="text-right">
                       <Badge variant="outline">{o.stage}</Badge>
+                      {proposalStatus[o.id] && (
+                        <Badge
+                          variant={
+                            proposalStatus[o.id] === "Proposta aceita" ? "default" : "secondary"
+                          }
+                          className="ml-1"
+                        >
+                          {proposalStatus[o.id]}
+                        </Badge>
+                      )}
                       <p className="mt-1 text-sm font-semibold">{money.format(o.value)}</p>
                     </div>
                     {supabase && (

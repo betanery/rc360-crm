@@ -10,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { logActivity } from "@/lib/activity";
 import { useAuth } from "@/lib/auth";
 import { useCRM } from "@/lib/crm-data";
 import { supabase } from "@/lib/supabase";
@@ -595,7 +596,9 @@ export function ProposalDialog({
         .upload(pdfPath, blob, { contentType: "application/pdf" });
       if (uploadError) throw uploadError;
 
-      const { error: insertError } = await supabase.from("proposals").insert({
+      // Link público para o cliente ver e aceitar a proposta (migration 024).
+      const publicToken = crypto.randomUUID();
+      const proposalRow = {
         id: proposalId,
         opportunity_id: opportunity.id,
         contact_id: contact.id,
@@ -604,8 +607,19 @@ export function ProposalDialog({
         total: content.price,
         valid_until: content.validUntil || null,
         pdf_path: pdfPath,
-      });
+      };
+      let hasLink = true;
+      let { error: insertError } = await supabase
+        .from("proposals")
+        .insert({ ...proposalRow, public_token: publicToken });
+      if (insertError && /public_token/.test(insertError.message)) {
+        hasLink = false;
+        ({ error: insertError } = await supabase.from("proposals").insert(proposalRow));
+      }
       if (insertError) throw insertError;
+      const outgoingMessage = hasLink
+        ? `${message}\n\nVeja e aceite a proposta online: ${window.location.origin}/p/${publicToken}`
+        : message;
 
       const safeName = (content.clientName || contact.name)
         .normalize("NFD")
@@ -617,7 +631,7 @@ export function ProposalDialog({
         p_opportunity_id: opportunity.id,
         p_channel: channel,
         p_automation_type: "proposal",
-        p_message: message,
+        p_message: outgoingMessage,
         p_subject: channel === "email" ? "Sua proposta RC360" : null,
         p_metadata: {
           proposal_id: proposalId,
@@ -627,6 +641,13 @@ export function ProposalDialog({
       });
       if (queueError) throw queueError;
 
+      await logActivity({
+        contactId: contact.id,
+        action: "Proposta enviada",
+        entityType: "proposal",
+        entityId: proposalId,
+        details: { program: content.program, total: content.price, channel },
+      });
       await moveOpportunity(opportunity.id, "Proposta enviada");
       toast.success("Proposta enviada para a fila e etapa atualizada.");
       onClose();

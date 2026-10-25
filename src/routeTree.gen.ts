@@ -26,6 +26,7 @@ import { Route as ContactsIndexRouteImport } from './routes/contacts/index'
 import { Route as ContactsContactIdRouteImport } from './routes/contacts/$contactId'
 import { Route as EventsIndexRouteImport } from './routes/events/index'
 import { Route as EventsEventIdRouteImport } from './routes/events/$eventId'
+import { Route as PTokenRouteImport } from './routes/p.$token'
 import { Route as RegisterSlugRouteImport } from './routes/register.$slug'
 import { Route as AutomationsCadencesCadenceIdRouteImport } from './routes/automations/cadences/$cadenceId'
 import { Route as AutomationsCadencesNewRouteImport } from './routes/automations/cadences/new'
@@ -115,6 +116,11 @@ const EventsEventIdRoute = EventsEventIdRouteImport.update({
   path: '/events/$eventId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PTokenRoute = PTokenRouteImport.update({
+  id: '/p/$token',
+  path: '/p/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RegisterSlugRoute = RegisterSlugRouteImport.update({
   id: '/register/$slug',
   path: '/register/$slug',
@@ -146,6 +152,7 @@ export interface FileRoutesByFullPath {
   '/companies/$companyId': typeof CompaniesCompanyIdRoute
   '/contacts/$contactId': typeof ContactsContactIdRoute
   '/events/$eventId': typeof EventsEventIdRoute
+  '/p/$token': typeof PTokenRoute
   '/register/$slug': typeof RegisterSlugRoute
   '/automations/': typeof AutomationsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/companies/$companyId': typeof CompaniesCompanyIdRoute
   '/contacts/$contactId': typeof ContactsContactIdRoute
   '/events/$eventId': typeof EventsEventIdRoute
+  '/p/$token': typeof PTokenRoute
   '/register/$slug': typeof RegisterSlugRoute
   '/automations': typeof AutomationsIndexRoute
   '/companies': typeof CompaniesIndexRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/companies/$companyId': typeof CompaniesCompanyIdRoute
   '/contacts/$contactId': typeof ContactsContactIdRoute
   '/events/$eventId': typeof EventsEventIdRoute
+  '/p/$token': typeof PTokenRoute
   '/register/$slug': typeof RegisterSlugRoute
   '/automations/': typeof AutomationsIndexRoute
   '/companies/': typeof CompaniesIndexRoute
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/companies/$companyId'
     | '/contacts/$contactId'
     | '/events/$eventId'
+    | '/p/$token'
     | '/register/$slug'
     | '/automations/'
     | '/companies/'
@@ -237,6 +247,7 @@ export interface FileRouteTypes {
     | '/companies/$companyId'
     | '/contacts/$contactId'
     | '/events/$eventId'
+    | '/p/$token'
     | '/register/$slug'
     | '/automations'
     | '/companies'
@@ -259,6 +270,7 @@ export interface FileRouteTypes {
     | '/companies/$companyId'
     | '/contacts/$contactId'
     | '/events/$eventId'
+    | '/p/$token'
     | '/register/$slug'
     | '/automations/'
     | '/companies/'
@@ -282,6 +294,7 @@ export interface RootRouteChildren {
   CompaniesCompanyIdRoute: typeof CompaniesCompanyIdRoute
   ContactsContactIdRoute: typeof ContactsContactIdRoute
   EventsEventIdRoute: typeof EventsEventIdRoute
+  PTokenRoute: typeof PTokenRoute
   RegisterSlugRoute: typeof RegisterSlugRoute
   AutomationsIndexRoute: typeof AutomationsIndexRoute
   CompaniesIndexRoute: typeof CompaniesIndexRoute
@@ -412,6 +425,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof EventsEventIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/p/$token': {
+      id: '/p/$token'
+      path: '/p/$token'
+      fullPath: '/p/$token'
+      preLoaderRoute: typeof PTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/register/$slug': {
       id: '/register/$slug'
       path: '/register/$slug'
@@ -450,6 +470,7 @@ const rootRouteChildren: RootRouteChildren = {
   CompaniesCompanyIdRoute: CompaniesCompanyIdRoute,
   ContactsContactIdRoute: ContactsContactIdRoute,
   EventsEventIdRoute: EventsEventIdRoute,
+  PTokenRoute: PTokenRoute,
   RegisterSlugRoute: RegisterSlugRoute,
   AutomationsIndexRoute: AutomationsIndexRoute,
   CompaniesIndexRoute: CompaniesIndexRoute,

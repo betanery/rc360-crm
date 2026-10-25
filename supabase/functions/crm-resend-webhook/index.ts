@@ -54,16 +54,63 @@ Deno.serve(async (req) => {
 
   const event = JSON.parse(rawBody) as {
     type?: string;
-    data?: { to?: string[]; bounce?: { type?: string } };
+    data?: {
+      email_id?: string;
+      to?: string[];
+      subject?: string;
+      bounce?: { type?: string };
+      click?: { link?: string };
+    };
   };
   const type = event.type ?? "";
+  const db = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
+
+  // Entrega, abertura e clique: viram linhas da linha do tempo do contato,
+  // uma por envio e tipo (abrir várias vezes não repete).
+  const tracked: Record<string, string> = {
+    "email.delivered": "E-mail entregue",
+    "email.opened": "Abriu o e-mail",
+    "email.clicked": "Clicou no link do e-mail",
+  };
+  if (tracked[type]) {
+    const emailId = event.data?.email_id;
+    if (!emailId) return json({ ok: true, ignored: "sem email_id" });
+    const { data: item } = await db
+      .from("automation_queue")
+      .select("id,organization_id,contact_id,subject")
+      .eq("metadata->>resend_id", emailId)
+      .maybeSingle();
+    if (!item) return json({ ok: true, ignored: "envio não encontrado" });
+
+    const action = tracked[type]!;
+    const { count } = await db
+      .from("activities")
+      .select("id", { count: "exact", head: true })
+      .eq("entity_id", item.id)
+      .eq("action", action);
+    if ((count ?? 0) === 0) {
+      await db.from("activities").insert({
+        organization_id: item.organization_id,
+        contact_id: item.contact_id,
+        action,
+        entity_type: "automation_queue",
+        entity_id: item.id,
+        details: {
+          subject: item.subject ?? event.data?.subject ?? "",
+          url: event.data?.click?.link ?? "",
+          via: "resend_webhook",
+        },
+      });
+    }
+    return json({ ok: true, tracked: type });
+  }
+
   const isComplaint = type === "email.complained";
   const isBounce =
     type === "email.bounced" && (event.data?.bounce?.type ?? "Permanent") !== "Transient";
   if (!isComplaint && !isBounce) return json({ ok: true, ignored: type });
 
   const reason = isComplaint ? "email_complaint" : "email_bounce";
-  const db = createClient(SUPABASE_URL, SERVICE_ROLE, { auth: { persistSession: false } });
   let affected = 0;
 
   for (const address of event.data?.to ?? []) {

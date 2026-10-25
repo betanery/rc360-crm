@@ -75,7 +75,12 @@ interface EmailOptions {
   attachments?: { filename: string; content: string }[];
 }
 
-async function sendEmail(email: string, subject: string, message: string, options: EmailOptions) {
+async function sendEmail(
+  email: string,
+  subject: string,
+  message: string,
+  options: EmailOptions,
+): Promise<string | undefined> {
   if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
   const heading = subject.replaceAll("{{nome}}", options.firstName);
   // E-mail de conteúdo leva descadastro no corpo e no cabeçalho (exigência
@@ -118,6 +123,8 @@ async function sendEmail(email: string, subject: string, message: string, option
     const detail = body?.message || body?.error?.message;
     throw new Error(detail ? `Resend: ${detail}` : `Resend request failed: ${sent.status}`);
   }
+  const result = await sent.json().catch(() => null);
+  return typeof result?.id === "string" ? result.id : undefined;
 }
 
 Deno.serve(async (req) => {
@@ -204,6 +211,7 @@ Deno.serve(async (req) => {
     }
 
     const attempts = Number(item.attempts ?? 0) + 1;
+    let resendId: string | undefined;
     try {
       await db
         .from("automation_queue")
@@ -243,7 +251,7 @@ Deno.serve(async (req) => {
         const pdfName =
           typeof item.metadata?.pdf_name === "string" ? item.metadata.pdf_name : "proposta.pdf";
         const meta = (item.metadata ?? {}) as Record<string, unknown>;
-        await sendEmail(contact.email, item.subject || "RC360", item.message || "", {
+        resendId = await sendEmail(contact.email, item.subject || "RC360", item.message || "", {
           contactId: contact.id,
           firstName: String(contact.name ?? "").split(" ")[0] ?? "",
           marketing: isMarketingEmail,
@@ -262,7 +270,13 @@ Deno.serve(async (req) => {
       sent++;
       await db
         .from("automation_queue")
-        .update({ status: "sent", sent_at: new Date().toISOString(), last_error: null })
+        .update({
+          status: "sent",
+          sent_at: new Date().toISOString(),
+          last_error: null,
+          // O id da Resend liga os avisos de abertura/clique a este envio.
+          ...(resendId ? { metadata: { ...(item.metadata ?? {}), resend_id: resendId } } : {}),
+        })
         .eq("id", item.id);
       await db.from("activities").insert({
         organization_id: item.organization_id,

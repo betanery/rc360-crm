@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { Area, Group } from "@/components/forms/fields";
 import { useCRM, type Contact, type Task } from "@/lib/crm-data";
+import { logActivity } from "@/lib/activity";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 
@@ -285,6 +286,12 @@ export function MeetingDialog({
           proposal_draft: keepDraft ? sugg.proposalDraft : {},
         });
         if (error) throw error;
+        await logActivity({
+          contactId: contact.id,
+          action: "Reunião registrada",
+          entityType: "meeting",
+          details: { summary: summary.slice(0, 280) },
+        });
       }
 
       toast.success("Dados da reunião salvos.");

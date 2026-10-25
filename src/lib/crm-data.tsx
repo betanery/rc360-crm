@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
+import { logActivity } from "./activity";
 import { isSupabaseConfigured, supabase } from "./supabase";
 
 export type Product = "Rotas do Lucro" | "Fastrack" | "Consultoria 4X";
@@ -737,6 +738,15 @@ export function CRMProvider({ children }: { children: ReactNode }) {
             })
             .eq("id", id);
           if (updateError) throw updateError;
+          if (current.stage !== stage) {
+            void logActivity({
+              contactId: current.contactId,
+              action: `Mudou para ${stage}`,
+              entityType: "opportunity",
+              entityId: id,
+              details: { from: current.stage, to: stage, product: current.product },
+            });
+          }
         }
         setOpportunities((items) =>
           items.map((item) =>
