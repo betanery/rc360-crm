@@ -28,18 +28,61 @@ function OportunidadesPage() {
   const [status, setStatus] = useState<typeof ALL | StatusFilter>(ALL);
   const [open, setOpen] = useState(false);
   const [activeProducts, setActiveProducts] = useState<string[]>(staticProducts);
+  const [prices, setPrices] = useState<Record<string, number>>({});
+  const [formContactId, setFormContactId] = useState("");
+  const [formProduct, setFormProduct] = useState("");
+  const [formValue, setFormValue] = useState("");
 
   useEffect(() => {
     if (!supabase) return;
-    supabase
-      .from("products")
-      .select("name")
-      .eq("active", true)
-      .order("name", { ascending: true })
-      .then(({ data, error }) => {
-        if (!error && data?.length) setActiveProducts(data.map((p) => p.name));
-      });
+    const client = supabase;
+    void (async () => {
+      // Com a coluna de preço (migration 019); sem ela, volta só aos nomes.
+      let { data, error } = await client
+        .from("products")
+        .select("name,price")
+        .eq("active", true)
+        .order("name", { ascending: true });
+      if (error) {
+        const fallback = await client
+          .from("products")
+          .select("name")
+          .eq("active", true)
+          .order("name", { ascending: true });
+        data = fallback.data as typeof data;
+        error = fallback.error;
+      }
+      if (error || !data?.length) return;
+      setActiveProducts(data.map((p) => p.name));
+      const found: Record<string, number> = {};
+      for (const row of data as { name: string; price?: number | null }[]) {
+        if (row.price !== null && row.price !== undefined) found[row.name] = Number(row.price);
+      }
+      setPrices(found);
+    })();
   }, []);
+
+  // Escolher o produto traz o valor cadastrado nele (continua editável).
+  function chooseProduct(name: string) {
+    setFormProduct(name);
+    if (prices[name] !== undefined) setFormValue(String(prices[name]));
+  }
+
+  // Escolher o contato já sugere o produto dele, se estiver cadastrado.
+  function chooseContact(id: string) {
+    setFormContactId(id);
+    const suggested = contacts.find((c) => c.id === id)?.product;
+    if (suggested && activeProducts.includes(suggested)) chooseProduct(suggested);
+  }
+
+  function openChange(isOpen: boolean) {
+    setOpen(isOpen);
+    if (isOpen) {
+      setFormContactId("");
+      setFormProduct("");
+      setFormValue("");
+    }
+  }
 
   const contactById = useMemo(() => new Map(contacts.map((c) => [c.id, c])), [contacts]);
 
@@ -91,7 +134,7 @@ function OportunidadesPage() {
             Todas as oportunidades em uma visão de tabela.
           </p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog open={open} onOpenChange={openChange}>
           <DialogTrigger asChild>
             <Button>
               <Plus /> Nova oportunidade
@@ -103,7 +146,13 @@ function OportunidadesPage() {
               <DialogDescription>Associe a um contato já cadastrado.</DialogDescription>
             </DialogHeader>
             <form onSubmit={submit} className="grid gap-3">
-              <select name="contactId" className={fieldClass} required defaultValue="">
+              <select
+                name="contactId"
+                className={fieldClass}
+                required
+                value={formContactId}
+                onChange={(e) => chooseContact(e.target.value)}
+              >
                 <option value="" disabled>
                   Selecione um contato
                 </option>
@@ -113,7 +162,13 @@ function OportunidadesPage() {
                   </option>
                 ))}
               </select>
-              <select name="product" className={fieldClass} required defaultValue="">
+              <select
+                name="product"
+                className={fieldClass}
+                required
+                value={formProduct}
+                onChange={(e) => chooseProduct(e.target.value)}
+              >
                 <option value="" disabled>
                   Selecione o produto
                 </option>
@@ -130,7 +185,15 @@ function OportunidadesPage() {
                 step="0.01"
                 placeholder="Valor (R$) *"
                 required
+                value={formValue}
+                onChange={(e) => setFormValue(e.target.value)}
               />
+              {prices[formProduct] !== undefined && (
+                <p className="-mt-1 text-xs text-muted-foreground">
+                  Valor do cadastro do produto: {money.format(prices[formProduct])}. Você pode
+                  alterar.
+                </p>
+              )}
               <Input name="nextAction" placeholder="Próxima ação *" required />
               <Input name="dueDate" type="date" required />
               <Button>Salvar oportunidade</Button>
