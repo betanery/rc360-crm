@@ -474,6 +474,36 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({ contacts, opportunities, tasks, carts }));
   }, [contacts, opportunities, tasks, carts]);
 
+  // Confere duplicidade na lista da tela e, se achar, confirma no banco antes de
+  // barrar (a lista pode estar velha, por exemplo após excluir o contato em
+  // outra aba ou direto no Supabase).
+  const findDuplicateContact = async (phone: string, email: string, excludeId?: string) => {
+    const normalizedPhone = phone.replace(/\D/g, "");
+    const matches = (item: { id: string; phone: string; email: string }) =>
+      item.id !== excludeId &&
+      Boolean(
+        (normalizedPhone && item.phone.replace(/\D/g, "") === normalizedPhone) ||
+        (email && (item.email ?? "").toLowerCase() === email.toLowerCase()),
+      );
+    const local = contacts.find(matches);
+    if (!local) return null;
+    if (!supabase) return local;
+    const { data, error: fetchError } = await supabase
+      .from("contacts")
+      .select("id,name,company,phone,email");
+    if (fetchError) return local;
+    const fresh = (data ?? []).map((row) => ({
+      id: row.id as string,
+      name: row.name as string,
+      company: (row.company as string | null) ?? "",
+      phone: (row.phone as string | null) ?? "",
+      email: (row.email as string | null) ?? "",
+    }));
+    const confirmed = fresh.find(matches);
+    if (!confirmed) void refresh();
+    return confirmed ?? null;
+  };
+
   const value = useMemo<CRMContextValue>(
     () => ({
       contacts,
@@ -482,13 +512,12 @@ export function CRMProvider({ children }: { children: ReactNode }) {
       carts,
       refresh,
       addContact: async (contact) => {
-        const normalizedPhone = contact.phone.replace(/\D/g, "");
-        const duplicate = contacts.some(
-          (item) =>
-            (normalizedPhone && item.phone.replace(/\D/g, "") === normalizedPhone) ||
-            (contact.email && item.email.toLowerCase() === contact.email.toLowerCase()),
-        );
-        if (duplicate) throw new Error("Já existe um contato com este WhatsApp ou e-mail.");
+        const duplicate = await findDuplicateContact(contact.phone, contact.email);
+        if (duplicate) {
+          throw new Error(
+            `Já existe um contato com este WhatsApp ou e-mail: ${duplicate.name}${duplicate.company ? ` (${duplicate.company})` : ""}.`,
+          );
+        }
         if (!supabase) {
           setContacts((items) => [
             ...items,
@@ -527,14 +556,12 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         setContacts((items) => [mapContact(data as ContactRow), ...items]);
       },
       updateContact: async (id, contact) => {
-        const normalizedPhone = contact.phone.replace(/\D/g, "");
-        const duplicate = contacts.some(
-          (item) =>
-            item.id !== id &&
-            ((normalizedPhone && item.phone.replace(/\D/g, "") === normalizedPhone) ||
-              (contact.email && item.email.toLowerCase() === contact.email.toLowerCase())),
-        );
-        if (duplicate) throw new Error("Já existe outro contato com este WhatsApp ou e-mail.");
+        const duplicate = await findDuplicateContact(contact.phone, contact.email, id);
+        if (duplicate) {
+          throw new Error(
+            `Já existe outro contato com este WhatsApp ou e-mail: ${duplicate.name}${duplicate.company ? ` (${duplicate.company})` : ""}.`,
+          );
+        }
         if (!supabase) {
           setContacts((items) =>
             items.map((item) => (item.id === id ? { ...item, ...contact } : item)),
@@ -886,6 +913,8 @@ export function CRMProvider({ children }: { children: ReactNode }) {
         );
       },
     }),
+    // findDuplicateContact só lê `contacts`, que já está nas dependências.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [contacts, opportunities, tasks, carts],
   );
 
