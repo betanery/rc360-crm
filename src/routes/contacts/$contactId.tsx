@@ -48,6 +48,7 @@ import { TagManager } from "@/components/contacts/TagManager";
 import { ObjectionManager } from "@/components/opportunities/ObjectionManager";
 import { ProposalDialog } from "@/components/opportunities/ProposalDialog";
 import { MeetingDialog } from "@/components/contacts/MeetingDialog";
+import { DeleteOpportunityDialog } from "@/components/opportunities/DeleteOpportunityDialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/contacts/$contactId")({ component: ContatoDetalhePage });
@@ -102,6 +103,7 @@ function ContatoDetalhePage() {
   const [decisionMapDraft, setDecisionMapDraft] = useState("");
   const [proposalOpportunityId, setProposalOpportunityId] = useState<string | null>(null);
   const [meetingOpen, setMeetingOpen] = useState(false);
+  const [deleteOpportunityId, setDeleteOpportunityId] = useState<string | null>(null);
   const [meeting, setMeeting] = useState<{
     id: string;
     summary: string;
@@ -743,6 +745,17 @@ function ContatoDetalhePage() {
                         <Send className="h-3.5 w-3.5" /> Enviar proposta
                       </Button>
                     )}
+                    {supabase && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => setDeleteOpportunityId(o.id)}
+                        aria-label="Excluir oportunidade"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
 
@@ -803,6 +816,11 @@ function ContatoDetalhePage() {
           )}
         </CardContent>
       </Card>
+
+      <DeleteOpportunityDialog
+        opportunity={contactOpportunities.find((o) => o.id === deleteOpportunityId) ?? null}
+        onClose={() => setDeleteOpportunityId(null)}
+      />
 
       <ProposalDialog
         opportunity={

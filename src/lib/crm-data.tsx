@@ -280,6 +280,7 @@ interface CRMContextValue {
     },
   ) => Promise<void>;
   moveOpportunity: (id: string, stage: Stage, lostReason?: string) => Promise<void>;
+  deleteOpportunity: (id: string) => Promise<void>;
   addOpportunityObjection: (opportunityId: string, tagName: string) => Promise<void>;
   removeOpportunityObjection: (opportunityId: string, tagName: string) => Promise<void>;
   updateOpportunityDecisionMap: (opportunityId: string, decisionMap: string) => Promise<void>;
@@ -744,6 +745,28 @@ export function CRMProvider({ children }: { children: ReactNode }) {
               : item,
           ),
         );
+      },
+      deleteOpportunity: async (id) => {
+        if (supabase) {
+          // Mensagens ainda na fila ficariam soltas (a ligação é desfeita ao
+          // excluir) e seriam enviadas: seguram antes de apagar.
+          await supabase
+            .from("automation_queue")
+            .update({ status: "blocked", last_error: "Oportunidade excluída" })
+            .eq("opportunity_id", id)
+            .eq("status", "pending");
+          const { data: proposalRows } = await supabase
+            .from("proposals")
+            .select("pdf_path")
+            .eq("opportunity_id", id);
+          const { error: deleteError } = await supabase.from("opportunities").delete().eq("id", id);
+          if (deleteError) throw deleteError;
+          const paths = (proposalRows ?? [])
+            .map((row) => row.pdf_path as string | null)
+            .filter((path): path is string => Boolean(path));
+          if (paths.length) await supabase.storage.from("proposals").remove(paths);
+        }
+        setOpportunities((items) => items.filter((item) => item.id !== id));
       },
       addOpportunityObjection: async (opportunityId, tagName) => {
         const trimmed = tagName.trim();

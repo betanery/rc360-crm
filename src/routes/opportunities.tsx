@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, Plus, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { money, products as staticProducts, shortDate, useCRM } from "@/lib/crm-data";
+import { DeleteOpportunityDialog } from "@/components/opportunities/DeleteOpportunityDialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
@@ -32,6 +33,7 @@ function OportunidadesPage() {
   const [formContactId, setFormContactId] = useState("");
   const [formProduct, setFormProduct] = useState("");
   const [formValue, setFormValue] = useState("");
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!supabase) return;
@@ -280,6 +282,17 @@ function OportunidadesPage() {
                           Detalhes <ChevronRight className="h-3.5 w-3.5" />
                         </Link>
                       )}
+                      {supabase && (
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="ml-2 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteId(o.id)}
+                          aria-label="Excluir oportunidade"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
                     </td>
                   </tr>
                 );
@@ -291,6 +304,10 @@ function OportunidadesPage() {
           <p className="p-6 text-sm text-muted-foreground">Nenhuma oportunidade neste filtro.</p>
         )}
       </div>
+      <DeleteOpportunityDialog
+        opportunity={opportunities.find((o) => o.id === deleteId) ?? null}
+        onClose={() => setDeleteId(null)}
+      />
     </div>
   );
 }
