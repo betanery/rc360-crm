@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import {
+  ArrowDown,
+  ArrowUp,
   Bot,
   Building2,
   CheckCircle2,
@@ -357,6 +359,22 @@ function ConfiguracoesPage() {
     }
     setNewStage("");
     toast.success("Etapa adicionada.");
+    void loadStages();
+  }
+
+  // Troca a posição da etapa com a vizinha. Ganho e Perdido ficam sempre no fim.
+  async function moveStage(stage: StageRow, direction: -1 | 1) {
+    if (!supabase) return;
+    const regular = funnelStages.filter((s) => !s.is_won && !s.is_lost);
+    const index = regular.findIndex((s) => s.id === stage.id);
+    const neighbor = regular[index + direction];
+    if (index < 0 || !neighbor) return;
+    const results = await Promise.all([
+      supabase.from("funnel_stages").update({ position: neighbor.position }).eq("id", stage.id),
+      supabase.from("funnel_stages").update({ position: stage.position }).eq("id", neighbor.id),
+    ]);
+    const failure = results.find((result) => result.error);
+    if (failure?.error) toast.error(failure.error.message);
     void loadStages();
   }
 
@@ -794,27 +812,59 @@ function ConfiguracoesPage() {
                 </Button>
               </form>
               <div className="space-y-2">
-                {funnelStages.map((stage) => (
-                  <div
-                    key={stage.id}
-                    className="flex items-center justify-between rounded-lg border p-3"
-                  >
-                    <span>{stage.name}</span>
-                    <div className="flex items-center gap-2">
-                      {stage.is_won && <Badge>Ganho</Badge>}
-                      {stage.is_lost && <Badge variant="destructive">Perdido</Badge>}
-                      {!stage.is_won && !stage.is_lost && (
-                        <button
-                          onClick={() => void deleteStage(stage)}
-                          aria-label={`Remover etapa ${stage.name}`}
-                          className="rounded-full p-1 text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
+                {funnelStages.map((stage, stageIndex) => {
+                  const movable = !stage.is_won && !stage.is_lost;
+                  const regularIds = funnelStages
+                    .filter((s) => !s.is_won && !s.is_lost)
+                    .map((s) => s.id);
+                  const regularIndex = regularIds.indexOf(stage.id);
+                  return (
+                    <div
+                      key={stage.id}
+                      className="flex items-center justify-between rounded-lg border p-3"
+                    >
+                      <span>
+                        <span className="mr-2 text-xs text-muted-foreground">
+                          {stageIndex + 1}.
+                        </span>
+                        {stage.name}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        {stage.is_won && <Badge>Ganho</Badge>}
+                        {stage.is_lost && <Badge variant="destructive">Perdido</Badge>}
+                        {movable && (
+                          <>
+                            <button
+                              onClick={() => void moveStage(stage, -1)}
+                              disabled={regularIndex <= 0}
+                              aria-label={`Subir etapa ${stage.name}`}
+                              className="rounded-full p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                            >
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              onClick={() => void moveStage(stage, 1)}
+                              disabled={regularIndex === regularIds.length - 1}
+                              aria-label={`Descer etapa ${stage.name}`}
+                              className="rounded-full p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"
+                            >
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            </button>
+                          </>
+                        )}
+                        {!stage.is_won && !stage.is_lost && (
+                          <button
+                            onClick={() => void deleteStage(stage)}
+                            aria-label={`Remover etapa ${stage.name}`}
+                            className="rounded-full p-1 text-muted-foreground hover:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
