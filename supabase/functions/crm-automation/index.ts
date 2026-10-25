@@ -1,6 +1,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { renderEmailHtml, renderEmailText } from "../_shared/email-template.ts";
 import { findOrCreateBotConversaSubscriber } from "../_shared/botconversa.ts";
+import { unsubscribeOneClickUrl, unsubscribePageUrl } from "../_shared/unsubscribe.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -12,6 +13,11 @@ const CRON_SECRET = Deno.env.get("CRON_SECRET");
 const BOT_BASE = "https://backend.botconversa.com.br/api/v1/webhook";
 const WHATSAPP_MAX_PER_RUN = Number(Deno.env.get("WHATSAPP_MAX_PER_RUN") ?? "15");
 const DAILY_WHATSAPP_CAP = Number(Deno.env.get("DAILY_WHATSAPP_CAP") ?? "150");
+// Teto de e-mails de marketing/conteúdo. Começa baixo de propósito: um
+// domínio novo precisa "esquentar" aos poucos; suba o teto com o tempo.
+const EMAIL_MAX_PER_RUN = Number(Deno.env.get("EMAIL_MAX_PER_RUN") ?? "40");
+const DAILY_EMAIL_CAP = Number(Deno.env.get("DAILY_EMAIL_CAP") ?? "100");
+const MARKETING_TYPES = ["cadence_step", "content"];
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), {
@@ -59,14 +65,37 @@ async function proposalAttachment(db: ReturnType<typeof createClient>, path: str
   return { filename: name, content: btoa(binary) };
 }
 
-async function sendEmail(
-  email: string,
-  subject: string,
-  message: string,
-  attachments: { filename: string; content: string }[] = [],
-) {
+interface EmailOptions {
+  contactId: string;
+  firstName: string;
+  marketing: boolean;
+  preheader?: string;
+  ctaLabel?: string;
+  ctaUrl?: string;
+  attachments?: { filename: string; content: string }[];
+}
+
+async function sendEmail(email: string, subject: string, message: string, options: EmailOptions) {
   if (!RESEND_API_KEY) throw new Error("RESEND_API_KEY not configured");
-  const content = { heading: subject, bodyText: message };
+  const heading = subject.replaceAll("{{nome}}", options.firstName);
+  // E-mail de conteúdo leva descadastro no corpo e no cabeçalho (exigência
+  // do Gmail/Yahoo para envio em volume).
+  const unsubscribeUrl = options.marketing ? await unsubscribePageUrl(options.contactId) : undefined;
+  const content = {
+    heading,
+    bodyText: message,
+    ...(options.ctaLabel ? { ctaLabel: options.ctaLabel } : {}),
+    ...(options.ctaUrl ? { ctaUrl: options.ctaUrl } : {}),
+    ...(options.preheader ? { preheader: options.preheader } : {}),
+    ...(unsubscribeUrl ? { unsubscribeUrl } : {}),
+  };
+  const headers = options.marketing
+    ? {
+        "List-Unsubscribe": `<${await unsubscribeOneClickUrl(options.contactId)}>`,
+        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
+      }
+    : undefined;
+  const attachments = options.attachments ?? [];
   const sent = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: {
@@ -76,9 +105,10 @@ async function sendEmail(
     body: JSON.stringify({
       from: RESEND_FROM,
       to: [email],
-      subject,
+      subject: heading,
       html: renderEmailHtml(content),
       text: renderEmailText(content),
+      ...(headers ? { headers } : {}),
       ...(attachments.length ? { attachments } : {}),
       ...(RESEND_REPLY_TO ? { reply_to: RESEND_REPLY_TO } : {}),
     }),
@@ -106,18 +136,28 @@ Deno.serve(async (req) => {
     console.error("run_inactivity_cadence_scan failed", scanError);
   }
 
-  const { data: queue, error } = await db
-    .from("automation_queue")
-    .select("*, contacts(id,name,email,phone,whatsapp_opt_in,email_opt_in)")
-    .eq("status", "pending")
-    .lte("scheduled_at", new Date().toISOString())
-    .order("scheduled_at", { ascending: true })
-    .limit(50);
+  // Busca cada canal separado para um não ocupar a vez do outro (o teto de
+  // e-mail deixa itens pendentes na fila de uma rodada para a outra).
+  const loadQueue = (channel: "whatsapp" | "email") =>
+    db
+      .from("automation_queue")
+      .select("*, contacts(id,name,email,phone,whatsapp_opt_in,email_opt_in)")
+      .eq("status", "pending")
+      .eq("channel", channel)
+      .lte("scheduled_at", new Date().toISOString())
+      .order("scheduled_at", { ascending: true })
+      .limit(50);
+  const [whatsappQueue, emailQueue] = await Promise.all([loadQueue("whatsapp"), loadQueue("email")]);
+  const error = whatsappQueue.error ?? emailQueue.error;
+  const queue = [...(whatsappQueue.data ?? []), ...(emailQueue.data ?? [])].sort(
+    (a, b) => +new Date(a.scheduled_at) - +new Date(b.scheduled_at),
+  );
 
   if (error) return json({ error: error.message }, 500);
 
-  const startOfDay = new Date();
-  startOfDay.setHours(0, 0, 0, 0);
+  // "Hoje" no horário de São Paulo, para os tetos diários.
+  const todaySP = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const startOfDay = new Date(`${todaySP}T00:00:00-03:00`);
   const { count: sentToday } = await db
     .from("automation_queue")
     .select("id", { count: "exact", head: true })
@@ -125,14 +165,33 @@ Deno.serve(async (req) => {
     .eq("status", "sent")
     .gte("sent_at", startOfDay.toISOString());
   const dailyCapHit = (sentToday ?? 0) >= DAILY_WHATSAPP_CAP;
+  const { count: emailsSentToday } = await db
+    .from("automation_queue")
+    .select("id", { count: "exact", head: true })
+    .eq("channel", "email")
+    .in("automation_type", MARKETING_TYPES)
+    .eq("status", "sent")
+    .gte("sent_at", startOfDay.toISOString());
+  let marketingEmailsToday = emailsSentToday ?? 0;
+  let marketingEmailsThisRun = 0;
 
   let sent = 0;
   let blocked = 0;
   let failed = 0;
   let whatsappSentThisRun = 0;
 
-  for (const item of queue ?? []) {
+  for (const item of queue) {
     const contact = item.contacts;
+    const isMarketingEmail =
+      item.channel === "email" && MARKETING_TYPES.includes(String(item.automation_type));
+    // E-mail de marketing respeita o teto por rodada e o diário; fica pendente
+    // para a próxima rodada (transacionais, como proposta, não são limitados).
+    if (
+      isMarketingEmail &&
+      (marketingEmailsThisRun >= EMAIL_MAX_PER_RUN || marketingEmailsToday >= DAILY_EMAIL_CAP)
+    ) {
+      continue;
+    }
 
     // Espaça os envios de WhatsApp (cap por execução + cap diário) pra não
     // disparar tudo em rajada — deixa como "pending" pro próximo ciclo em
@@ -183,12 +242,21 @@ Deno.serve(async (req) => {
         const pdfPath = typeof item.metadata?.pdf_path === "string" ? item.metadata.pdf_path : null;
         const pdfName =
           typeof item.metadata?.pdf_name === "string" ? item.metadata.pdf_name : "proposta.pdf";
-        await sendEmail(
-          contact.email,
-          item.subject || "RC360",
-          item.message || "",
-          pdfPath ? [await proposalAttachment(db, pdfPath, pdfName)] : [],
-        );
+        const meta = (item.metadata ?? {}) as Record<string, unknown>;
+        await sendEmail(contact.email, item.subject || "RC360", item.message || "", {
+          contactId: contact.id,
+          firstName: String(contact.name ?? "").split(" ")[0] ?? "",
+          marketing: isMarketingEmail,
+          ...(typeof meta["preheader"] === "string" ? { preheader: meta["preheader"] } : {}),
+          ...(typeof meta["cta_label"] === "string" ? { ctaLabel: meta["cta_label"] } : {}),
+          ...(typeof meta["cta_url"] === "string" ? { ctaUrl: meta["cta_url"] } : {}),
+          attachments: pdfPath ? [await proposalAttachment(db, pdfPath, pdfName)] : [],
+        });
+        if (isMarketingEmail) {
+          marketingEmailsThisRun++;
+          marketingEmailsToday++;
+          await sleep(400);
+        }
       }
 
       sent++;

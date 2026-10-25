@@ -17,6 +17,7 @@ import { Route as ProductsRouteImport } from './routes/products'
 import { Route as RecoveryRouteImport } from './routes/recovery'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as UnsubscribeRouteImport } from './routes/unsubscribe'
 import { Route as AutomationsIndexRouteImport } from './routes/automations/index'
 import { Route as CompaniesIndexRouteImport } from './routes/companies/index'
 import { Route as CompaniesCompanyIdRouteImport } from './routes/companies/$companyId'
@@ -66,6 +67,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UnsubscribeRoute = UnsubscribeRouteImport.update({
+  id: '/unsubscribe',
+  path: '/unsubscribe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AutomationsIndexRoute = AutomationsIndexRouteImport.update({
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/recovery': typeof RecoveryRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/companies/$companyId': typeof CompaniesCompanyIdRoute
   '/contacts/$contactId': typeof ContactsContactIdRoute
   '/events/$eventId': typeof EventsEventIdRoute
@@ -149,6 +156,7 @@ export interface FileRoutesByTo {
   '/recovery': typeof RecoveryRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/companies/$companyId': typeof CompaniesCompanyIdRoute
   '/contacts/$contactId': typeof ContactsContactIdRoute
   '/events/$eventId': typeof EventsEventIdRoute
@@ -170,6 +178,7 @@ export interface FileRoutesById {
   '/recovery': typeof RecoveryRoute
   '/settings': typeof SettingsRoute
   '/tasks': typeof TasksRoute
+  '/unsubscribe': typeof UnsubscribeRoute
   '/companies/$companyId': typeof CompaniesCompanyIdRoute
   '/contacts/$contactId': typeof ContactsContactIdRoute
   '/events/$eventId': typeof EventsEventIdRoute
@@ -192,6 +201,7 @@ export interface FileRouteTypes {
     | '/recovery'
     | '/settings'
     | '/tasks'
+    | '/unsubscribe'
     | '/companies/$companyId'
     | '/contacts/$contactId'
     | '/events/$eventId'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/recovery'
     | '/settings'
     | '/tasks'
+    | '/unsubscribe'
     | '/companies/$companyId'
     | '/contacts/$contactId'
     | '/events/$eventId'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/recovery'
     | '/settings'
     | '/tasks'
+    | '/unsubscribe'
     | '/companies/$companyId'
     | '/contacts/$contactId'
     | '/events/$eventId'
@@ -253,6 +265,7 @@ export interface RootRouteChildren {
   RecoveryRoute: typeof RecoveryRoute
   SettingsRoute: typeof SettingsRoute
   TasksRoute: typeof TasksRoute
+  UnsubscribeRoute: typeof UnsubscribeRoute
   CompaniesCompanyIdRoute: typeof CompaniesCompanyIdRoute
   ContactsContactIdRoute: typeof ContactsContactIdRoute
   EventsEventIdRoute: typeof EventsEventIdRoute
@@ -321,6 +334,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/unsubscribe': {
+      id: '/unsubscribe'
+      path: '/unsubscribe'
+      fullPath: '/unsubscribe'
+      preLoaderRoute: typeof UnsubscribeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/automations/': {
@@ -405,6 +425,7 @@ const rootRouteChildren: RootRouteChildren = {
   RecoveryRoute: RecoveryRoute,
   SettingsRoute: SettingsRoute,
   TasksRoute: TasksRoute,
+  UnsubscribeRoute: UnsubscribeRoute,
   CompaniesCompanyIdRoute: CompaniesCompanyIdRoute,
   ContactsContactIdRoute: ContactsContactIdRoute,
   EventsEventIdRoute: EventsEventIdRoute,

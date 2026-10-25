@@ -17,3 +17,6 @@ verify_jwt = true
 
 [functions.crm-botconversa-sync]
 verify_jwt = true
+
+[functions.crm-unsubscribe]
+verify_jwt = false

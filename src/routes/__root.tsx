@@ -138,13 +138,13 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const isPublicRoute = pathname.startsWith("/register/");
+  const isPublicRoute = pathname.startsWith("/register/") || pathname === "/unsubscribe";
 
   return (
     <QueryClientProvider client={queryClient}>
       {isPublicRoute ? (
         <>
-          {/* Formulário público de inscrição: fica fora do login de propósito. */}
+          {/* Inscrição e cancelamento de inscrição são públicos: ficam fora do login de propósito. */}
           <Outlet />
           <Toaster richColors position="top-right" />
         </>
